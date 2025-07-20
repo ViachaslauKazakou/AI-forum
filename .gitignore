@@ -131,5 +131,6 @@ alembic/versions/
 # OS
 .DS_Store
 Thumbs.db
+*.pkl
 
 answers.txt
