@@ -1,0 +1,78 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Создать тему - Админ-панель{% endblock %}
+{% block header %}Создание темы{% endblock %}
+
+{% block toolbar %}
+<a href="/admin/topics" class="btn btn-secondary">
+    <i class="bi bi-arrow-left"></i> Назад
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="/admin/topics/create">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Название темы *</label>
+                        <input type="text" class="form-control" id="title" name="title" 
+                               value="{{ form_data.title if form_data else '' }}" 
+                               maxlength="200" required>
+                        <div class="form-text">Максимум 200 символов</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" 
+                                  rows="5">{{ form_data.description if form_data else '' }}</textarea>
+                        <div class="form-text">Подробное описание темы (необязательно)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="user_id" class="form-label">Автор темы</label>
+                        <select class="form-select" id="user_id" name="user_id">
+                            <option value="">Без автора</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}" 
+                                    {% if form_data and form_data.user_id == user.id %}selected{% endif %}>
+                                {{ user.username }} ({{ user.firstname }} {{ user.lastname }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Выберите пользователя-автора темы (необязательно)</div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="/admin/topics" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Создать тему
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Справка
+            </div>
+            <div class="card-body">
+                <h6>Создание темы:</h6>
+                <ul class="list-unstyled">
+                    <li><strong>Название:</strong> Краткое описание темы (обязательно)</li>
+                    <li><strong>Описание:</strong> Подробная информация о теме</li>
+                    <li><strong>Автор:</strong> Пользователь, создавший тему</li>
+                </ul>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-lightbulb"></i>
+                    Новые темы создаются активными по умолчанию
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

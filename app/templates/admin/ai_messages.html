@@ -1,0 +1,82 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Темы - Админ-панель{% endblock %}
+{% block header %}Управление темами{% endblock %}
+
+{% block toolbar %}
+<a href="/admin/topics/create" class="btn btn-primary">
+    <i class="bi bi-plus-circle"></i> Создать тему
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="user-ai-messages">
+    <h5>Создание ИИ сообщения от пользователя: {{ user_id }}</h5>
+    <p>Выберите тему, к которой будет привязано сообщение:</p>
+</div>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Описание</th>
+                <th>Автор</th>
+                <th>Статус</th>
+                <th>Дата создания</th>
+                <th>Дата обновления</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for topic in topics %}
+            <tr>
+                <td>{{ topic.id }}</td>
+                <td>
+                    <a href="/topics/{{ topic.id }}" target="_blank" class="text-decoration-none">
+                        {{ topic.title }}
+                    </a>
+                </td>
+                <td>
+                    {% if topic.description %}
+                        {{ topic.description[:100] }}{% if topic.description|length > 100 %}...{% endif %}
+                    {% else %}
+                        <span class="text-muted">Нет описания</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if topic.user_id %}
+                        <span class="badge bg-info">ID: {{ topic.user_id }}</span>
+                    {% else %}
+                        <span class="text-muted">Не указан</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if topic.is_active %}
+                        <span class="badge bg-success">Активна</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Неактивна</span>
+                    {% endif %}
+                </td>
+                <td>{{ topic.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>{{ topic.updated_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>
+                    <div class="btn-group" role="group">
+                        <a href="/admin/messages/ai/create?topic_id={{ topic.id }}&user_id={{ user_id }}" onclick="return confirm('Подтвердите создание сообщения?')" class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-pencil-square"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not topics %}
+            <tr>
+                <td colspan="8" class="text-center text-muted">
+                    <i class="bi bi-inbox"></i> Темы не найдены
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

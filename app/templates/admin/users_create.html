@@ -1,0 +1,131 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Создать пользователя - Админ-панель{% endblock %}
+{% block header %}Создание пользователя{% endblock %}
+
+{% block toolbar %}
+<a href="/admin/users" class="btn btn-secondary">
+    <i class="bi bi-arrow-left"></i> Назад
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="/admin/users/create">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Логин *</label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       value="{{ form_data.username if form_data else '' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ form_data.email if form_data else '' }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="firstname" class="form-label">Имя *</label>
+                                <input type="text" class="form-control" id="firstname" name="firstname" 
+                                       value="{{ form_data.firstname if form_data else '' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="lastname" class="form-label">Фамилия *</label>
+                                <input type="text" class="form-control" id="lastname" name="lastname" 
+                                       value="{{ form_data.lastname if form_data else '' }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Пароль *</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <div class="form-text">Минимум 6 символов</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="user_type" class="form-label">Роль *</label>
+                                <select class="form-select" id="user_type" name="user_type" required>
+                                    <option value="">Выберите роль</option>
+                                    {% for role in user_roles %}
+                                    <option value="{{ role }}" 
+                                            {% if form_data and form_data.user_type == role %}selected{% endif %}>
+                                        {% if role == 'admin' %}Администратор{% else %}Пользователь{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Статус *</label>
+                                <select class="form-select" id="status" name="status" required>
+                                    <option value="">Выберите статус</option>
+                                    {% for status_val in user_statuses %}
+                                    <option value="{{ status_val }}" 
+                                            {% if form_data and form_data.status == status_val %}selected{% endif %}>
+                                        {% if status_val == 'pending' %}Ожидает подтверждения
+                                        {% elif status_val == 'active' %}Активный
+                                        {% elif status_val == 'disabled' %}Отключен
+                                        {% elif status_val == 'archive' %}Архивирован
+                                        {% elif status_val == 'deleted' %}Удален
+                                        {% else %}{{ status_val|title }}{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="/admin/users" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Создать пользователя
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Справка
+            </div>
+            <div class="card-body">
+                <h6>Роли пользователей:</h6>
+                <ul class="list-unstyled">
+                    <li><strong>Ментор:</strong> Опытный пользователь, может модерировать контент</li>
+                    <li><strong>Ментии:</strong> Обычный пользователь форума</li>
+                </ul>
+                
+                <h6>Статусы:</h6>
+                <ul class="list-unstyled">
+                    <li><strong>Ожидает:</strong> Новый пользователь, требует подтверждения</li>
+                    <li><strong>Активный:</strong> Полные права доступа</li>
+                    <li><strong>Отключен:</strong> Временно заблокирован</li>
+                    <li><strong>Архивирован:</strong> Неактивный пользователь</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

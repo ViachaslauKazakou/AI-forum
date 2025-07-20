@@ -1,0 +1,90 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Редактировать сообщение - Админ-панель{% endblock %}
+{% block header %}Редактирование сообщения #{{ message.id }}{% endblock %}
+
+{% block toolbar %}
+<a href="/admin/messages" class="btn btn-secondary">
+    <i class="bi bi-arrow-left"></i> Назад
+</a>
+<a href="/topics/{{ message.topic_id }}" target="_blank" class="btn btn-outline-info">
+    <i class="bi bi-eye"></i> Посмотреть тему
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="/admin/messages/{{ message.id }}/edit">
+                    <div class="mb-3">
+                        <label for="author_name" class="form-label">Имя автора *</label>
+                        <input type="text" class="form-control" id="author_name" name="author_name" 
+                               value="{{ message.author_name }}" maxlength="100" required>
+                        <div class="form-text">Максимум 100 символов</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Содержание сообщения *</label>
+                        <textarea class="form-control" id="content" name="content" 
+                                  rows="10" required>{{ message.content }}</textarea>
+                        <div class="form-text">Основной текст сообщения</div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="/admin/messages" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Сохранить изменения
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Информация о сообщении
+            </div>
+            <div class="card-body">
+                <p><strong>ID:</strong> {{ message.id }}</p>
+                <p><strong>Тема:</strong> 
+                    <a href="/topics/{{ message.topic_id }}" target="_blank">
+                        Тема #{{ message.topic_id }}
+                    </a>
+                </p>
+                <p><strong>Автор:</strong> {{ message.author_name }}</p>
+                <p><strong>Пользователь:</strong> 
+                    {% if message.user_id %}
+                        ID: {{ message.user_id }}
+                    {% else %}
+                        Гость
+                    {% endif %}
+                </p>
+                <p><strong>Ответ на сообщение:</strong> 
+                    {% if message.parent_id %}
+                        #{{ message.parent_id }}
+                    {% else %}
+                        Основное сообщение
+                    {% endif %}
+                </p>
+                <p><strong>Дата создания:</strong> {{ message.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+                <p><strong>Дата обновления:</strong> {{ message.updated_at.strftime('%d.%m.%Y %H:%M') }}</p>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-exclamation-triangle"></i> Предупреждение
+            </div>
+            <div class="card-body">
+                <p class="text-warning">
+                    <small>Изменения сообщения будут сразу видны всем пользователям. 
+                    Будьте осторожны при редактировании.</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

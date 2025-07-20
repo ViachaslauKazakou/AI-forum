@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Форум - Главная{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1>Темы форума</h1>
+        
+        {% if topics %}
+            <div class="row">
+                {% for topic in topics %}
+                <div class="col-12 mb-3">
+                    <div class="card topic-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <a href="/topics/{{ topic.id }}" class="text-decoration-none">
+                                    {{ topic.title }}
+                                </a>
+                            </h5>
+                            {% if topic.description %}
+                            <p class="card-text text-muted">{{ topic.description[:100] }}{% if topic.description|length > 100 %}...{% endif %}</p>
+                            {% endif %}
+                            <div class="row text-muted small">
+                                <div class="col">
+                                    <i class="bi bi-calendar"></i> Создана: {{ topic.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                </div>
+                                <div class="col text-end">
+                                    <i class="bi bi-chat"></i> Сообщений: {{ topic.message_count }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <h4>Пока нет тем</h4>
+                <p>Будьте первым, кто создаст тему!</p>
+                <a href="/create-topic" class="btn btn-primary">Создать тему</a>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Действия</h5>
+            </div>
+            <div class="card-body">
+                <a href="/create-topic" class="btn btn-primary w-100 mb-2">
+                    Создать новую тему
+                </a>
+                <div class="text-muted small">
+                    Всего тем: {{ topics|length }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

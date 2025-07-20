@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  postgres:
+    build:
+      context: docker/postgres_db/.docker-containers/postgres
+      dockerfile: Dockerfile
+    container_name: forum_postgres
+    env_file:
+      - ./docker/postgres_db/.docker-env/dev/common.env
+      - ./docker/postgres_db/.docker-env/dev/postgres.env
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - forum_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docker -d postgres"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  forum_network:
+    driver: bridge

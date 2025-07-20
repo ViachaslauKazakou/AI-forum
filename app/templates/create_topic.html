@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Создать тему - Форум{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2>Создать новую тему</h2>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
+                
+                <form id="createTopicForm">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Название темы:</label>
+                        <input type="text" class="form-control" id="title" name="title" required 
+                               placeholder="Введите название темы">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание (необязательно):</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Краткое описание темы"></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            Создать тему
+                        </button>
+                        <a href="/" class="btn btn-secondary">Отмена</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('createTopicForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    const title = document.getElementById('title').value.trim();
+    const description = document.getElementById('description').value.trim();
+    
+    // Показываем спиннер
+    spinner.classList.remove('d-none');
+    submitBtn.disabled = true;
+    
+    // Очищаем предыдущие ошибки
+    const existingAlert = document.querySelector('.alert-danger');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+    
+    try {
+        const response = await fetch('/api/topics', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: title,
+                description: description || null
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            // Перенаправляем на созданную тему
+            window.location.href = `/topics/${data.id}`;
+        } else {
+            const errorData = await response.json();
+            showError(errorData.detail || 'Произошла ошибка при создании темы');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('Произошла ошибка при отправке запроса');
+    } finally {
+        // Скрываем спиннер
+        spinner.classList.add('d-none');
+        submitBtn.disabled = false;
+    }
+});
+
+function showError(message) {
+    const cardBody = document.querySelector('.card-body');
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger';
+    alertDiv.role = 'alert';
+    alertDiv.textContent = message;
+    
+    // Вставляем сообщение об ошибке в начало card-body
+    cardBody.insertBefore(alertDiv, cardBody.firstChild);
+}
+</script>
+{% endblock %}

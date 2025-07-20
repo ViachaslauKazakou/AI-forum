@@ -1,0 +1,95 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Редактировать тему - Админ-панель{% endblock %}
+{% block header %}Редактирование темы: {{ topic.title }}{% endblock %}
+
+{% block toolbar %}
+<a href="/admin/topics" class="btn btn-secondary">
+    <i class="bi bi-arrow-left"></i> Назад
+</a>
+<a href="/topics/{{ topic.id }}" target="_blank" class="btn btn-outline-info">
+    <i class="bi bi-eye"></i> Посмотреть
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="/admin/topics/{{ topic.id }}/edit">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Название темы *</label>
+                        <input type="text" class="form-control" id="title" name="title" 
+                               value="{{ topic.title }}" maxlength="200" required>
+                        <div class="form-text">Максимум 200 символов</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" 
+                                  rows="5">{{ topic.description or '' }}</textarea>
+                        <div class="form-text">Подробное описание темы (необязательно)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                   value="true" {% if topic.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">
+                                Активная тема
+                            </label>
+                        </div>
+                        <div class="form-text">Неактивные темы скрыты от обычных пользователей</div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="/admin/topics" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Сохранить изменения
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Информация о теме
+            </div>
+            <div class="card-body">
+                <p><strong>ID:</strong> {{ topic.id }}</p>
+                <p><strong>Автор:</strong> 
+                    {% if topic.user_id %}
+                        ID: {{ topic.user_id }}
+                    {% else %}
+                        Не указан
+                    {% endif %}
+                </p>
+                <p><strong>Дата создания:</strong> {{ topic.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+                <p><strong>Дата обновления:</strong> {{ topic.updated_at.strftime('%d.%m.%Y %H:%M') }}</p>
+                <p><strong>Статус:</strong> 
+                    {% if topic.is_active %}
+                        <span class="badge bg-success">Активна</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Неактивна</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-exclamation-triangle"></i> Внимание
+            </div>
+            <div class="card-body">
+                <p class="text-warning">
+                    <small>При деактивации темы она станет недоступна для обычных пользователей, 
+                    но все сообщения в ней сохранятся.</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

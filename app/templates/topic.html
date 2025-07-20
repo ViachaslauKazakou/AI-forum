@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}{{ topic.title }} - Форум{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- Заголовок темы -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>{{ topic.title }}</h3>
+                {% if topic.description %}
+                <p class="text-muted mb-0">{{ topic.description }}</p>
+                {% endif %}
+                <small class="text-muted">
+                    Создана: {{ topic.created_at.strftime('%d.%m.%Y %H:%M') }}
+                </small>
+            </div>
+        </div>
+
+        <!-- Сообщения -->
+        <div id="messages">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="message-content" id="message-{{ message.id }}">
+                    <div class="message-meta">
+                        <strong>{{ message.author_name }}</strong>
+                        <span class="ms-2">{{ message.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                        {% if message.parent_id %}
+                        <span class="badge bg-secondary ms-2">Ответ на сообщение #{{ message.parent_id }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="message-text">
+                        {{ message.content|nl2br }}
+                    </div>
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-primary reply-btn" 
+                                data-message-id="{{ message.id }}"
+                                data-author="{{ message.author_name }}">
+                            Ответить
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    <h5>Пока нет сообщений</h5>
+                    <p>Будьте первым, кто оставит сообщение в этой теме!</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Форма добавления сообщения -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 id="message-form-title">Добавить сообщение</h5>
+            </div>
+            <div class="card-body">
+                <form id="message-form">
+                    <input type="hidden" id="topic-id" value="{{ topic.id }}">
+                    <input type="hidden" id="parent-id" value="">
+                    
+                    <div class="mb-3">
+                        <label for="author-name" class="form-label">Ваше имя:</label>
+                        <input type="text" class="form-control" id="author-name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="message-content" class="form-label">Сообщение:</label>
+                        <textarea class="form-control" id="message-content" rows="4" required></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">Отправить сообщение</button>
+                        <button type="button" class="btn btn-secondary" id="cancel-reply" style="display: none;">
+                            Отменить ответ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Информация о теме</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Сообщений:</strong> {{ messages|length }}</p>
+                <p><strong>Создана:</strong> {{ topic.created_at.strftime('%d.%m.%Y') }}</p>
+                <p><strong>Последнее обновление:</strong> {{ topic.updated_at.strftime('%d.%m.%Y %H:%M') }}</p>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-body">
+                <a href="/" class="btn btn-outline-primary w-100">
+                    ← Вернуться к списку тем
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const messageForm = document.getElementById('message-form');
+    const replyButtons = document.querySelectorAll('.reply-btn');
+    const cancelReplyBtn = document.getElementById('cancel-reply');
+    const formTitle = document.getElementById('message-form-title');
+    const parentIdInput = document.getElementById('parent-id');
+    
+    // Обработка кнопок "Ответить"
+    replyButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const messageId = this.dataset.messageId;
+            const authorName = this.dataset.author;
+            
+            parentIdInput.value = messageId;
+            formTitle.textContent = `Ответ на сообщение от ${authorName}`;
+            cancelReplyBtn.style.display = 'inline-block';
+            
+            // Прокручиваем к форме
+            messageForm.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+    
+    // Отмена ответа
+    cancelReplyBtn.addEventListener('click', function() {
+        parentIdInput.value = '';
+        formTitle.textContent = 'Добавить сообщение';
+        this.style.display = 'none';
+    });
+    
+    // Отправка формы
+    messageForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            content: document.getElementById('message-content').value,
+            author_name: document.getElementById('author-name').value,
+            topic_id: parseInt(document.getElementById('topic-id').value),
+            parent_id: parentIdInput.value ? parseInt(parentIdInput.value) : null
+        };
+        
+        try {
+            const response = await fetch('/api/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            if (response.ok) {
+                location.reload(); // Перезагружаем страницу для отображения нового сообщения
+            } else {
+                const error = await response.json();
+                alert('Ошибка: ' + error.detail);
+            }
+        } catch (error) {
+            alert('Ошибка при отправке сообщения');
+            console.error(error);
+        }
+    });
+});
+</script>
+{% endblock %}

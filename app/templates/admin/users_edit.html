@@ -1,0 +1,149 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Редактировать пользователя - Админ-панель{% endblock %}
+{% block header %}Редактирование пользователя: {{ user.username }}{% endblock %}
+
+{% block toolbar %}
+<a href="/admin/users" class="btn btn-secondary">
+    <i class="bi bi-arrow-left"></i> Назад
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="/admin/users/{{ user.id }}/edit">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Логин *</label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       value="{{ user.username }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ user.email }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="firstname" class="form-label">Имя *</label>
+                                <input type="text" class="form-control" id="firstname" name="firstname" 
+                                       value="{{ user.firstname or '' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="lastname" class="form-label">Фамилия *</label>
+                                <input type="text" class="form-control" id="lastname" name="lastname" 
+                                       value="{{ user.lastname or '' }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Новый пароль</label>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       value="{{ user.password }}">
+                                <div class="form-text">Оставьте пустым, чтобы не менять пароль</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="user_type" class="form-label">Роль *</label>
+                                <select class="form-select" id="user_type" name="user_type" required>
+                                    <option value="">Выберите роль</option>
+                                    {% for role in user_roles %}
+                                    <option value="{{ role }}" 
+                                            {% if user.user_type and user.user_type.value == role %}selected{% endif %}>
+                                            {{ role }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Статус *</label>
+                                <select class="form-select" id="status" name="status" required>
+                                    <option value="">Выберите статус</option>
+                                    {% for status_val in user_statuses %}
+                                    <option value="{{ status_val }}" 
+                                            {% if user.status and user.status.value == status_val %}selected{% endif %}>
+                                        {% if status_val == 'pending' %}Ожидает подтверждения
+                                        {% elif status_val == 'active' %}Активный
+                                        {% elif status_val == 'disabled' %}Отключен
+                                        {% elif status_val == 'archive' %}Архивирован
+                                        {% elif status_val == 'deleted' %}Удален
+                                        {% else %}{{ status_val|title }}{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Дата создания</label>
+                                <input type="text" class="form-control" 
+                                       value="{{ user.created_at.strftime('%d.%m.%Y %H:%M') if user.created_at else 'Не указано' }}" 
+                                       readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="/admin/users" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Сохранить изменения
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Информация о пользователе
+            </div>
+            <div class="card-body">
+                <p><strong>ID:</strong> {{ user.id }}</p>
+                <p><strong>Логин:</strong> {{ user.username }}</p>
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Текущая роль:</strong> 
+                    {% if user.user_type %}
+                        {% if user.user_type.value == 'admin' %}Ментор{% else %}Ментии{% endif %}
+                    {% else %}
+                        Не указано
+                    {% endif %}
+                </p>
+                <p><strong>Текущий статус:</strong> 
+                    {% if user.status %}
+                        {% if user.status.value == 'pending' %}Ожидает подтверждения
+                        {% elif user.status.value == 'active' %}Активный
+                        {% elif user.status.value == 'disabled' %}Отключен
+                        {% elif user.status.value == 'archive' %}Архивирован
+                        {% elif user.status.value == 'deleted' %}Удален
+                        {% else %}{{ user.status.value|title }}{% endif %}
+                    {% else %}
+                        Не указано
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

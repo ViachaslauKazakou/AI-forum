@@ -1,0 +1,114 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Главная - Админ-панель{% endblock %}
+{% block header %}Панель управления{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-people"></i> Пользователи
+                    </div>
+                    <div class="card-body">
+                        <h4 class="card-title">{{ stats.users_count }}</h4>
+                        <p class="card-text">Всего пользователей в системе</p>
+                        <a href="/admin/users" class="btn btn-light">Управление</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-chat-dots"></i> Темы
+                    </div>
+                    <div class="card-body">
+                        <h4 class="card-title">{{ stats.topics_count }}</h4>
+                        <p class="card-text">Всего тем форума</p>
+                        <a href="/admin/topics" class="btn btn-light">Управление</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-info mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-envelope"></i> Сообщения
+                    </div>
+                    <div class="card-body">
+                        <h4 class="card-title">{{ stats.messages_count }}</h4>
+                        <p class="card-text">Всего сообщений</p>
+                        <a href="/admin/messages" class="btn btn-light">Управление</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <h3>Последние пользователи</h3>
+        <div class="list-group">
+            {% for user in recent_users %}
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ user.username }}</h5>
+                    <small>{{ user.created_at.strftime('%d.%m.%Y') }}</small>
+                </div>
+                <p class="mb-1">{{ user.firstname }} {{ user.lastname }}</p>
+                <small>{{ user.email }}</small>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="mt-2">
+            <a href="/admin/users" class="btn btn-primary btn-sm">Все пользователи</a>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <h3>Последние темы</h3>
+        <div class="list-group">
+            {% for topic in recent_topics %}
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ topic.title }}</h5>
+                    <small>{{ topic.created_at.strftime('%d.%m.%Y') }}</small>
+                </div>
+                <p class="mb-1">{{ topic.description[:100] }}{% if topic.description and topic.description|length > 100 %}...{% endif %}</p>
+                <small>
+                    {% if topic.is_active %}
+                        <span class="badge bg-success">Активна</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Неактивна</span>
+                    {% endif %}
+                </small>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="mt-2">
+            <a href="/admin/topics" class="btn btn-success btn-sm">Все темы</a>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <h3>Последние сообщения</h3>
+        <div class="list-group">
+            {% for message in recent_messages %}
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ message.author_name }}</h5>
+                    <small>{{ message.created_at.strftime('%d.%m.%Y') }}</small>
+                </div>
+                <p class="mb-1">{{ message.content[:100] }}{% if message.content|length > 100 %}...{% endif %}</p>
+                <small>Тема ID: {{ message.topic_id }}</small>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="mt-2">
+            <a href="/admin/messages" class="btn btn-info btn-sm">Все сообщения</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
