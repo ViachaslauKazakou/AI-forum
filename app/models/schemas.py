@@ -71,5 +71,21 @@ class TopicList(TopicBase):
         from_attributes = True
 
 
+class UserBaseContext(BaseModel):
+    # id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # user_id: int
+    character: str
+    character_type: str
+    mood: str
+    context: Optional[str]
+    content: str
+    timestamp: datetime
+    reply_to: Optional[str]
+    topic_id: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
 # Обновляем forward reference
 MessageResponse.model_rebuild()

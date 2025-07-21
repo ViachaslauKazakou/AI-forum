@@ -7,7 +7,7 @@ from app.database import get_db
 from app.crud import user_crud, topic_crud, message_crud
 from app.models.pydantic_models import UserRole, Status
 from app.ai_manager.forum_manager import ForumManager
-from app.schemas import MessageCreate
+from app.models.schemas import MessageCreate
 
 router = APIRouter(prefix="/admin", tags=["admin-web"])
 templates = Jinja2Templates(directory="app/templates")
@@ -229,7 +229,7 @@ async def admin_topics_create(
     db: AsyncSession = Depends(get_db),
 ):
     """Создание темы"""
-    from app.schemas import TopicCreate
+    from app.models.schemas import TopicCreate
 
     try:
         topic_data = TopicCreate(title=title, description=description, user_id=user_id if user_id else None)
@@ -275,7 +275,7 @@ async def admin_topics_edit(
     db: AsyncSession = Depends(get_db),
 ):
     """Редактирование темы"""
-    from app.schemas import TopicUpdate
+    from app.models.schemas import TopicUpdate
 
     try:
         topic_data = TopicUpdate(title=title, description=description, is_active=is_active)
@@ -335,7 +335,7 @@ async def admin_messages_edit(
     db: AsyncSession = Depends(get_db),
 ):
     """Редактирование сообщения"""
-    from app.schemas import MessageUpdate
+    from app.models.schemas import MessageUpdate
 
     try:
         message_data = MessageUpdate(content=content, author_name=author_name)

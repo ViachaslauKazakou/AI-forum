@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, update
 from app.models.models import Topic, Message, User
-from app.schemas import TopicCreate, MessageCreate, TopicUpdate, MessageUpdate
+from app.models.schemas import TopicCreate, MessageCreate, TopicUpdate, MessageUpdate
 from app.models.pydantic_models import UserBaseModel
 from typing import List, Optional
 

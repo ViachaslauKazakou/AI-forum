@@ -79,3 +79,25 @@ class User(Base):
     # Relationships
     topics: Mapped[List["Topic"]] = relationship("Topic", back_populates="user")
     messages: Mapped[List["Message"]] = relationship("Message", back_populates="user")
+
+
+class UsersContext(Base):
+    __tablename__ = 'users_base_context'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=True)
+    character: Mapped[str] = mapped_column(String, nullable=False)
+    character_type: Mapped[str] = mapped_column(String, nullable=False)
+    mood: Mapped[str] = mapped_column(String, nullable=False)
+    context: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reply_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # reply_to: Mapped[Optional[int]] = mapped_column(ForeignKey("messages.id"), nullable=True)
+    topic: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # topic_id: Mapped[int] = mapped_column(ForeignKey("topics.id"), nullable=True)
+
+    # Связи
+    # topic: Mapped["Topic"] = relationship("Topic", back_populates="userscontext")
+    # user: Mapped["User"] = relationship("User", back_populates="userscontext")
+    # replies: Mapped[List["Message"]] = relationship("Message", back_populates="parent", cascade="all, delete-orphan")

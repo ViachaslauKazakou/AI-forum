@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.database import get_db
 from app.crud import topic_crud, message_crud
-from app.schemas import (
+from app.models.schemas import (
     TopicCreate,
     TopicResponse,
     TopicWithMessages,

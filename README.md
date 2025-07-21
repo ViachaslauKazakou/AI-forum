@@ -210,6 +210,10 @@ UNION ALL
 SELECT 'messages' as table_name, COUNT(*) as count FROM messages;
 "
 
+# удалить таблицу
+PGPASSWORD=postgres psql -h 127.0.0.1 -p 5433 -U docker -d postgres
+DROP TABLE table_name;
+
 # Просмотр логов PostgreSQL
 docker-compose logs postgres
 
