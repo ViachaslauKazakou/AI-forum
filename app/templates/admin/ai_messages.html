@@ -62,9 +62,13 @@
                 <td>{{ topic.updated_at.strftime('%d.%m.%Y %H:%M') }}</td>
                 <td>
                     <div class="btn-group" role="group">
-                        <a href="/admin/messages/ai/create?topic_id={{ topic.id }}&user_id={{ user_id }}" onclick="return confirm('Подтвердите создание сообщения?')" class="btn btn-sm btn-outline-warning">
-                            <i class="bi bi-pencil-square"></i>
-                        </a>
+                        <form method="post" action="/admin/messages/ai/create" style="display: inline;">
+                            <input type="hidden" name="topic_id" value="{{ topic.id }}">
+                            <input type="hidden" name="user_id" value="{{ user_id }}">
+                            <button type="submit" onclick="return confirm('Подтвердите создание ИИ сообщения для темы: {{ topic.title }}?')" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-robot"></i> Создать ИИ сообщение
+                            </button>
+                        </form>
                     </div>
                 </td>
             </tr>

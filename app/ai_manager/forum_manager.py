@@ -1,5 +1,5 @@
 import hashlib
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 import json
 import re
 from app.utils.logger_utils import timer, setup_logger
@@ -32,7 +32,7 @@ class CharacterPersona:
     CHARACTERS = {
         "alaev": {
             "type": "forum_troll",
-            "personality": "40 лет, Язвительный и провокационный, грубый, любит спорить, часто использует сарказм",
+            "personality": "Язвительный и провокационный, грубый, любит спорить, часто использует сарказм, Постоянно оценивает собеседника",
             "speech_pattern": "Длинные фразы, оторванные от контекста, устаревшие технологии, любит отрицать все и спорить с окружающими",
             "expertise": "Старые технологии, критика новых подходов, ненавидит Польшу",
             "mood_variations": ["sarcastic", "aggressive", "nostalgic", "provocative"],
@@ -53,9 +53,9 @@ class CharacterPersona:
         },
         "Domen77": {
             "type": "forum_troll",
-            "personality": "Завистливый, провокационный, любит спорить",
+            "personality": "Завистливый, провокационный, любит спорить, болтливый не по теме",
             "speech_pattern": "Отвечает часто с сарказмом, использует провокации",
-            "expertise": "Нет особой экспертизы, просто любит спорить, провоцировать",
+            "expertise": "Нет особой экспертизы, просто любит спорить, провоцировать, не компетентен в вопросах о которых пишет",
             "mood_variations": ["provocative", "sly", "encouraging", "neutral"],
         },
         "nechaos": {
@@ -651,10 +651,16 @@ class ForumManager:
         # ...existing initialization...
         self.forum_rag = ForumRAG("app/ai_manager/forum_knowledge_base", "forum_cache")
         self.character_persona = CharacterPersona()
-        self.model = AIModels.gemma 
+        self.model = AIModels.gemma
 
     @timer
-    def ask_as_character(self, prompt: str, character: str, mood: Optional[str] = None, translate: bool = True, extended_docs: bool = True) -> str:
+    def ask_as_character(
+        self, prompt: str,
+        character: str,
+        mood: Optional[str] = None,
+        translate: bool = True,
+        extended_docs: bool = True,
+            ) -> Union[str, dict, ChatResponse]:
         """Отвечает от имени определенного персонажа"""
         logger.info(f"🎭 Запрос от персонажа '{character}' с настроением '{mood}': {prompt[:100]}...")
 
