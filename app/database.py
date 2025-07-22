@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql+asyncpg://username:password@localhost:5432/forum_db"
+    "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres"
 )
 
 # Создаем асинхронный движок базы данных

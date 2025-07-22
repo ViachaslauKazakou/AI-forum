@@ -65,7 +65,7 @@
                                     {% for role in user_roles %}
                                     <option value="{{ role }}" 
                                             {% if form_data and form_data.user_type == role %}selected{% endif %}>
-                                        {% if role == 'admin' %}Администратор{% else %}Пользователь{% endif %}
+                                            {{ role }}
                                     </option>
                                     {% endfor %}
                                 </select>

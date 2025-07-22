@@ -7,11 +7,10 @@ import json
 import hashlib
 
 from langchain_community.vectorstores import FAISS
+# from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
-from langchain.chains import RetrievalQA
-
 from app.utils.logger_utils import setup_logger, timer
 
 logger = setup_logger(__name__)
@@ -41,7 +40,7 @@ class AdvancedRAG:
         if not os.path.exists(self.documents_path):
             return ""
             
-        # Получаем все .txt файлы и их время изменения
+        # Получаем все  файлы и их время изменения
         files_info = []
         for root, dirs, files in os.walk(self.documents_path):
             for filename in sorted(files):
@@ -166,36 +165,63 @@ class AdvancedRAG:
     def _create_new_rag(self):
         """Создает новый RAG индекс"""
         # Загружаем документы
-        logger.info(f"Загрузка документов из {self.documents_path}")
-        loader = DirectoryLoader(
-            self.documents_path, 
-            glob="**/*.[tj]s*",
-            loader_cls=TextLoader, 
-            loader_kwargs={"encoding": "utf-8"}
-        )
+        logger.info(f"🔍 Загрузка документов из {self.documents_path}")
+        
+        # Проверяем, существует ли директория
+        if not os.path.exists(self.documents_path):
+            logger.error(f"❌ Директория с документами не найдена: {self.documents_path}")
+            return
+            
+        # Проверяем наличие файлов
+        files_found = []
+        for root, dirs, files in os.walk(self.documents_path):
+            for file in files:
+                if file.endswith(('.txt', '.json')):
+                    full_path = os.path.join(root, file)
+                    files_found.append(full_path)
+                    logger.info(f"   📄 Найден файл: {full_path}")
+        
+        logger.info(f"📚 Найдено {len(files_found)} файлов для загрузки")
+        
+        # Загружаем файлы по отдельности, чтобы гарантировать правильную загрузку
+        documents = []
+        for file_path in files_found:
+            try:
+                logger.info(f"   📖 Загрузка файла: {file_path}")
+                loader = TextLoader(file_path, encoding="utf-8")
+                file_docs = loader.load()
+                documents.extend(file_docs)
+                logger.info(f"   ✅ Загружено {len(file_docs)} документов из {file_path}")
+            except Exception as e:
+                logger.error(f"   ❌ Ошибка загрузки файла {file_path}: {e}")
+                continue
 
         try:
-            documents = loader.load()
-            
             if not documents:
-                logger.warning(f"Не найдено документов в {self.documents_path}")
+                logger.warning(f"⚠️ Не найдено документов в {self.documents_path}")
+                logger.info(f"   Найденные файлы: {files_found}")
                 return
 
-            logger.info(f"Загружено {len(documents)} документов")
+            logger.info(f"✅ Загружено {len(documents)} документов")
+            
+            # Логируем информацию о загруженных документах
+            for i, doc in enumerate(documents[:5]):  # Первые 5 для примера
+                logger.info(f"   📄 Документ {i+1}: source={doc.metadata.get('source', 'unknown')}, length={len(doc.page_content)}")
+                logger.info(f"      Содержимое: {doc.page_content[:100]}...")
 
             # Разбиваем на чанки
-            logger.info("Разбиение документов на чанки...")
+            logger.info("✂️ Разбиение документов на чанки...")
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=500, 
-                chunk_overlap=50, 
+                chunk_size=800,  # Уменьшаем размер чанков для разбиения JSON файлов на части
+                chunk_overlap=100,  # Увеличиваем перекрытие
                 length_function=len
             )
 
             texts = text_splitter.split_documents(documents)
-            logger.info(f"Создано {len(texts)} чанков")
+            logger.info(f"📝 Создано {len(texts)} чанков")
 
             # Создаем векторное хранилище
-            logger.info("Создание векторного хранилища...")
+            logger.info("🧠 Создание векторного хранилища...")
             self.vectorstore = FAISS.from_documents(texts, self.embeddings)
 
             # Создаем retriever
@@ -204,19 +230,21 @@ class AdvancedRAG:
                 search_kwargs={"k": 3}
             )
             
-            logger.info("RAG успешно настроен")
+            logger.info("✅ RAG успешно настроен")
             
             # Сохраняем в кеш
             self._save_cache()
 
         except Exception as e:
-            logger.error(f"Ошибка при настройке RAG: {e}")
+            logger.error(f"❌ Ошибка при настройке RAG: {e}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
             self.vectorstore = None
             self.retriever = None
 
     def get_relevant_docs(self, query: str, method: str = "adaptive") -> List[str]:
         """Получает релевантные документы с улучшенным ранжированием"""
-        logger.debug(f"Поиск релевантных документов для запроса: {query} (method={method})")
+        logger.info(f"Поиск релевантных документов для запроса: {query} (method={method})")
         
         if not self.retriever:
             logger.warning("Retriever не инициализирован. Проверьте настройку RAG.")
@@ -246,7 +274,7 @@ class AdvancedRAG:
             for i, doc_info in enumerate(docs_info):
                 similarity = doc_info.get('similarity_score', 0)
                 source = doc_info.get('source', 'unknown')
-                logger.debug(f"Документ {i+1}: similarity={similarity:.4f}, source={source}")
+                logger.info(f"Документ {i+1}: similarity={similarity:.4f}, source={source}")
             
             logger.info(f"Найдено {len(result)} релевантных документов ({method} метод)")
             return result
@@ -257,7 +285,7 @@ class AdvancedRAG:
 
     def get_relevant_docs_with_metadata(self, query: str) -> List[Dict]:
         """Получает релевантные документы с метаданными"""
-        logger.debug(f"Поиск релевантных документов с метаданными для запроса: {query}")
+        logger.info(f"Поиск релевантных документов с метаданными для запроса: {query}")
         
         if not self.retriever:
             logger.warning("Retriever не инициализирован. Проверьте настройку RAG.")
@@ -283,7 +311,7 @@ class AdvancedRAG:
 
     def get_relevant_docs_filtered(self, query: str, similarity_threshold: float = 0.7) -> List[str]:
         """Получает релевантные документы с фильтрацией по similarity score"""
-        logger.debug(f"Поиск релевантных документов для запроса: {query}")
+        logger.info(f"Поиск релевантных документов для запроса: {query}")
         
         if not self.vectorstore:
             logger.warning("Vectorstore не инициализирован")
@@ -299,9 +327,9 @@ class AdvancedRAG:
                 # Чем меньше score, тем больше похожесть в FAISS
                 if score <= similarity_threshold:
                     filtered_docs.append(doc.page_content)
-                    logger.debug(f"Документ принят: score={score:.4f}")
+                    logger.info(f"Документ принят: score={score:.4f}")
                 else:
-                    logger.debug(f"Документ отклонен: score={score:.4f}")
+                    logger.info(f"Документ отклонен: score={score:.4f}")
             
             logger.info(f"Найдено {len(filtered_docs)} релевантных документов (threshold={similarity_threshold})")
             return filtered_docs
@@ -586,7 +614,7 @@ class AdvancedRAG:
             return context_chunks
             
         except Exception as e:
-            logger.debug(f"Ошибка при поиске контекста: {e}")
+            logger.info(f"Ошибка при поиске контекста: {e}")
             return []
 
     def _assess_quality(self, similarity_score: float) -> str:
@@ -599,3 +627,205 @@ class AdvancedRAG:
             return "fair"
         else:
             return "poor"
+
+    def create_extended_documents_from_json(self, use_extended_parsing: bool = True) -> None:
+        """Создает документы с расширенным парсингом JSON массивов
+        
+        Вместо разбиения на чанки, каждое сообщение из JSON становится отдельным документом
+        Учитывает: content, context, reply_to, thread_id
+        """
+        logger.info("🔧 Создание документов с расширенным парсингом JSON массивов...")
+        
+        if not os.path.exists(self.documents_path):
+            logger.error(f"❌ Директория с документами не найдена: {self.documents_path}")
+            return
+        
+        # Найдем все JSON файлы
+        json_files = []
+        for root, dirs, files in os.walk(self.documents_path):
+            for file in files:
+                if file.endswith('.json'):
+                    full_path = os.path.join(root, file)
+                    json_files.append(full_path)
+                    logger.info(f"   📄 Найден JSON файл: {full_path}")
+        
+        logger.info(f"📚 Найдено {len(json_files)} JSON файлов для расширенного парсинга")
+        
+        try:
+            from langchain.schema import Document
+            
+            all_documents = []
+            
+            for file_path in json_files:
+                logger.info(f"   📖 Обработка файла: {file_path}")
+                
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    # Используем расширенный парсер для извлечения всех сообщений
+                    if hasattr(self, 'parse_all_messages_from_json_array'):
+                        # Импортируем метод из ForumRAG, если доступен
+                        messages = self._parse_json_messages_extended(content, file_path)
+                    else:
+                        # Fallback к простому парсингу
+                        messages = self._simple_json_parse(content, file_path)
+                    
+                    logger.info(f"   ✅ Извлечено {len(messages)} сообщений из {file_path}")
+                    
+                    # Создаем отдельный документ для каждого сообщения
+                    for i, message in enumerate(messages):
+                        # Создаем расширенный контент
+                        document_content = self._create_extended_content(message)
+                        
+                        # Создаем метаданные
+                        metadata = {
+                            'source': file_path,
+                            'message_index': i,
+                            'character': message.get('character', 'unknown'),
+                            'thread_id': message.get('thread_id'),
+                            'reply_to': message.get('reply_to'),
+                            'context': message.get('context', 'general'),
+                            'mood': message.get('mood', 'neutral'),
+                            'timestamp': message.get('timestamp', ''),
+                            'extraction_method': 'extended_json_parsing'
+                        }
+                        
+                        # Создаем документ
+                        doc = Document(
+                            page_content=document_content,
+                            metadata=metadata
+                        )
+                        all_documents.append(doc)
+                        
+                        logger.info(f"      📄 Создан документ {i+1}: {message.get('character')} - {message.get('content', '')[:50]}...")
+
+                except Exception as e:
+                    logger.error(f"   ❌ Ошибка обработки файла {file_path}: {e}")
+                    continue
+            
+            if not all_documents:
+                logger.warning(f"⚠️ Не удалось создать документы из JSON файлов")
+                return
+            
+            logger.info(f"✅ Создано {len(all_documents)} расширенных документов")
+            
+            # Создаем векторное хранилище БЕЗ дополнительного разбиения на чанки
+            logger.info("🧠 Создание векторного хранилища с расширенными документами...")
+            self.vectorstore = FAISS.from_documents(all_documents, self.embeddings)
+            
+            # Создаем retriever
+            self.retriever = self.vectorstore.as_retriever(
+                search_type="similarity", 
+                search_kwargs={"k": 5}  # Увеличиваем k для большего числа документов
+            )
+            
+            logger.info("✅ RAG с расширенным парсингом успешно настроен")
+            
+            # Сохраняем в кеш
+            self._save_cache()
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка при создании расширенных документов: {e}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            self.vectorstore = None
+            self.retriever = None
+
+    def _parse_json_messages_extended(self, content: str, source_file: str) -> List[Dict]:
+        """Расширенный парсинг JSON для извлечения всех сообщений"""
+        messages = []
+        
+        try:
+            # Попытка парсинга как JSON
+            if content.strip().startswith("{") and content.strip().endswith("}"):
+                data = json.loads(content)
+                
+                # Проверяем, есть ли массив messages
+                if "messages" in data and isinstance(data["messages"], list):
+                    for i, message in enumerate(data["messages"]):
+                        normalized = self._normalize_message(message, i, source_file)
+                        messages.append(normalized)
+                else:
+                    # Одиночное сообщение
+                    normalized = self._normalize_message(data, 0, source_file)
+                    messages.append(normalized)
+                    
+            elif content.strip().startswith("[") and content.strip().endswith("]"):
+                # Прямой массив
+                data = json.loads(content)
+                if isinstance(data, list):
+                    for i, message in enumerate(data):
+                        normalized = self._normalize_message(message, i, source_file)
+                        messages.append(normalized)
+            
+        except json.JSONDecodeError as e:
+            logger.info(f"JSON parsing failed for {source_file}: {e}")
+            # Fallback к текстовому парсингу
+            messages.append({
+                'character': 'unknown',
+                'content': content,
+                'context': 'general',
+                'mood': 'neutral',
+                'reply_to': None,
+                'thread_id': None,
+                'timestamp': '',
+                'message_index': 0
+            })
+        
+        return messages
+
+    def _simple_json_parse(self, content: str, source_file: str) -> List[Dict]:
+        """Простой fallback парсинг JSON"""
+        try:
+            data = json.loads(content)
+            if isinstance(data, dict) and "messages" in data:
+                return data["messages"]
+            elif isinstance(data, list):
+                return data
+            else:
+                return [data]
+        except:
+            return [{'content': content, 'character': 'unknown'}]
+
+    def _normalize_message(self, message: Dict, index: int, source_file: str) -> Dict:
+        """Нормализует сообщение к стандартному формату"""
+        return {
+            'character': message.get('character', 'unknown'),
+            'content': message.get('content', ''),
+            'context': message.get('context', 'general'),
+            'mood': message.get('mood', 'neutral'),
+            'reply_to': message.get('reply_to'),
+            'thread_id': message.get('thread_id'),
+            'timestamp': message.get('timestamp', ''),
+            'character_type': message.get('character_type', 'unknown'),
+            'message_index': index,
+            'source_file': source_file
+        }
+
+    def _create_extended_content(self, message: Dict) -> str:
+        """Создает расширенный контент для лучшего поиска"""
+        content = message.get('content', '')
+        
+        # Добавляем контекстную информацию
+        context_parts = []
+        
+        if message.get('context') and message['context'] != 'general':
+            context_parts.append(f"Контекст: {message['context']}")
+        
+        if message.get('reply_to'):
+            context_parts.append(f"Ответ для: {message['reply_to']}")
+        
+        if message.get('thread_id'):
+            context_parts.append(f"Тема обсуждения: {message['thread_id']}")
+        
+        if message.get('mood') and message['mood'] != 'neutral':
+            context_parts.append(f"Настроение: {message['mood']}")
+        
+        # Объединяем основной контент с контекстной информацией
+        if context_parts:
+            extended_content = f"{content}\n\n[{' | '.join(context_parts)}]"
+        else:
+            extended_content = content
+        
+        return extended_content

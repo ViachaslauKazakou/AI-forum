@@ -8,6 +8,7 @@ from app.crud import user_crud, topic_crud, message_crud
 from app.models.pydantic_models import UserRole, Status
 from app.ai_manager.forum_manager import ForumManager
 from app.models.schemas import MessageCreate
+import json
 
 router = APIRouter(prefix="/admin", tags=["admin-web"])
 templates = Jinja2Templates(directory="app/templates")
@@ -393,14 +394,25 @@ async def admin_ai_messages_create(request: Request, topic_id: str, user_id: str
         mood="sarcastic"
     )
     print(f"{user.username}: {response['result']}")
-    # Сохраняем AI сообщение
-    message = MessageCreate(
-        content=response['result'],
-        author_name=user.username,
-        topic_id=int(topic_id),
-        user_id=int(user_id),
-        parent_id=int(last_message[0].id) if last_message else None
-    )
-    await message_crud.create_message(db, message)
-    return RedirectResponse(url="/admin/messages", status_code=200)
+    try:
+            result = json.loads(response['result'])
+            print(result)
+            answer = result['content']
+            print(f"AI ответ: {answer}")
+    except json.JSONDecodeError:
+        print(f"Ошибка декодирования JSON: {response['result']}")
+        answer = response['result']
+    except TypeError:
+        print(f"Ошибка обработки ответа: {response}")
+        answer = response['result']
+        message = MessageCreate(
+            content=answer,
+            author_name=user.username,
+            topic_id=int(topic_id),
+            user_id=int(user_id),
+            parent_id=int(last_message[0].id) if last_message else None
+        )
+        await message_crud.create_message(db, message)
+        return RedirectResponse(url=f"/topics/{topic_id}", status_code=200)
+
 
