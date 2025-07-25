@@ -374,84 +374,172 @@ async def admin_ai_messages_create_form(request: Request, user_id: int, db: Asyn
     return templates.TemplateResponse("admin/ai_messages.html", {"request": request, "topics": topics, "user_id": user_id})
 
 
+async def generate_and_save_ai_message(topic_id: str, user_id: str):
+    """Создание AI сообщения в фоновом режиме"""
+    from app.database import async_session_maker
+    import logging
+    import asyncio
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Преобразуем строки в числа с валидацией
+        topic_id_int = int(topic_id)
+        user_id_int = int(user_id)
+        
+        logger.info(f"🚀 Начало генерации ИИ сообщения: topic_id={topic_id_int}, user_id={user_id_int}")
+        
+        # Создаем новую сессию БД для фоновой задачи
+        async with async_session_maker() as db:
+            try:
+                # Проверяем существование темы
+                topic = await topic_crud.get_topic_by_id(db, topic_id_int)
+                if not topic:
+                    logger.error(f"❌ Тема {topic_id_int} не найдена")
+                    return
+                
+                # Получаем последние сообщения из темы (больше контекста)
+                recent_messages = await message_crud.get_topic_messages(db, topic_id_int, limit=5)
+                if not recent_messages:
+                    logger.error(f"❌ Нет сообщений в теме {topic_id_int}")
+                    return
+                
+                # Получаем пользователя по user_id
+                user = await user_crud.get_user_by_id(db, user_id_int)
+                if not user:
+                    logger.error(f"❌ Пользователь {user_id_int} не найден")
+                    return
+                
+                logger.info(f"🎭 Генерация ответа от {user.username} для темы '{topic.title}'")
+                
+                # Создаем контекст из последних сообщений
+                context = "\n".join([f"{msg.author_name}: {msg.content}" for msg in reversed(recent_messages[-3:])])
+                last_message_content = recent_messages[0].content
+                
+                # Инициализируем ИИ менеджер
+                ai_manager = ForumManager()
+                
+                # Создаем расширенный запрос с контекстом
+                enhanced_query = f"Контекст последних сообщений:\n{context}\n\nОтветь на: {last_message_content}"
+                
+                # Генерируем ответ от ИИ персонажа асинхронно
+                logger.info(f"🤖 Запуск генерации ответа для персонажа {user.username}")
+                
+                # Добавляем таймаут для генерации (максимум 60 секунд)
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        ai_manager.ask_as_character,
+                        enhanced_query,  # Используем расширенный запрос с контекстом
+                        user.username,
+                        mood="sarcastic"
+                    ),
+                    timeout=60.0
+                )
+                
+                logger.info(f"📝 Получен ответ от ИИ: {str(response)[:100]}...")
+                
+                # Обрабатываем ответ
+                answer = None
+                if isinstance(response, dict):
+                    if 'result' in response:
+                        try:
+                            # Пытаемся парсить как JSON
+                            if isinstance(response['result'], str):
+                                result = json.loads(response['result'])
+                                answer = result.get('content', response['result'])
+                            else:
+                                answer = response['result']
+                        except json.JSONDecodeError:
+                            # Если не JSON, используем как есть
+                            answer = response['result']
+                    else:
+                        answer = str(response)
+                elif isinstance(response, str):
+                    try:
+                        result = json.loads(response)
+                        answer = result.get('content', response)
+                    except json.JSONDecodeError:
+                        answer = response
+                else:
+                    answer = str(response)
+                
+                if not answer or answer.strip() == "":
+                    logger.error("❌ ИИ вернул пустой ответ")
+                    return
+                
+                logger.info(f"✅ Обработанный ответ: {answer[:100]}...")
+                
+                # Создаем сообщение
+                message_data = MessageCreate(
+                    content=answer,
+                    author_name=user.username,
+                    topic_id=topic_id_int,
+                    user_id=user_id_int,
+                    parent_id=recent_messages[0].id if recent_messages else None
+                )
+                
+                # Сохраняем в БД
+                created_message = await message_crud.create_message(db, message_data)
+                
+                logger.info(f"✅ ИИ сообщение создано: ID={created_message.id}, тема={topic.title}")
+                
+                # Фиксируем изменения в БД
+                await db.commit()
+                
+            except asyncio.TimeoutError:
+                logger.error(f"⏰ Таймаут генерации ИИ сообщения для темы {topic_id_int}")
+                await db.rollback()
+            except Exception as db_error:
+                logger.error(f"❌ Ошибка работы с БД: {db_error}")
+                await db.rollback()
+                raise
+                
+    except ValueError as ve:
+        logger.error(f"❌ Ошибка валидации параметров: {ve}")
+    except Exception as e:
+        logger.error(f"❌ Критическая ошибка создания ИИ сообщения: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+
+
 @router.post("/messages/ai/create")
 async def admin_ai_messages_create(
     background_tasks: BackgroundTasks,
     topic_id: str = Form(...),
     user_id: str = Form(...)
 ):
-    # Запуск в фоне
-    background_tasks.add_task(
-        generate_and_save_ai_message,
-        topic_id,
-        user_id
-    )
+    """Создание ИИ сообщения с асинхронной обработкой"""
+    import logging
     
-    # Немедленный редирект с индикатором
-    return RedirectResponse(
-        url=f"/topics/{topic_id}?generating=true",
-        status_code=303
-    )
-
-
-async def generate_and_save_ai_message(topic_id: str, user_id: str):
-    """Создание AI сообщения в фоновом режиме"""
-    from app.database import async_session_maker
+    logger = logging.getLogger(__name__)
     
-    async with async_session_maker() as db:
-        try:
-            ai_manager = ForumManager()
-            
-            # Получаем последнее сообщение из темы
-            last_message = await message_crud.get_topic_messages(db, int(topic_id), limit=1)
-            if not last_message:
-                print(f"❌ Нет сообщений в теме {topic_id}")
-                return
-            
-            # Получаем пользователя по user_id
-            user = await user_crud.get_user_by_id(db, int(user_id))
-            if not user:
-                print(f"❌ Пользователь {user_id} не найден")
-                return
-            
-            print(f"🎭 Генерация ответа от {user.username} для темы {topic_id}")
-            
-            # Генерируем ответ от ИИ персонажа
-            response = ai_manager.ask_as_character(
-                last_message[0].content, 
-                user.username, 
-                mood="sarcastic"
-            )
-            
-            try:
-                result = json.loads(response['result'])
-                print(result)
-                answer = result['content']
-                print(f"AI ответ: {answer}")
-            except json.JSONDecodeError:
-                print(f"Ошибка декодирования JSON: {response['result']}")
-                answer = response['result']
-            except TypeError:
-                print(f"Ошибка обработки ответа: {response}")
-                answer = response['result']
-                    
-            print(f"✅ Сгенерирован ответ: {answer[:100]}...")
-            
-            # Создаем сообщение
-            message = MessageCreate(
-                content=answer,
-                author_name=user.username,
-                topic_id=int(topic_id),
-                user_id=int(user_id),
-                parent_id=last_message[0].id if last_message else None
-            )
-            
-            await message_crud.create_message(db, message)
-            print(f"✅ ИИ сообщение создано в теме {topic_id}")
-            
-        except Exception as e:
-            print(f"❌ Ошибка создания ИИ сообщения: {e}")
-            import traceback
-            traceback.print_exc()
+    try:
+        # Валидация входных данных
+        topic_id_int = int(topic_id)
+        user_id_int = int(user_id)
+        
+        logger.info(f"📨 Получен запрос на создание ИИ сообщения: topic_id={topic_id_int}, user_id={user_id_int}")
+        
+        # Запуск в фоне с улучшенной обработкой
+        background_tasks.add_task(
+            generate_and_save_ai_message,
+            topic_id,
+            user_id
+        )
+        
+        logger.info(f"🚀 Задача добавлена в очередь для topic_id={topic_id_int}")
+        
+        # Немедленный редирект с индикатором
+        return RedirectResponse(
+            url=f"/topics/{topic_id}?generating=true&ai_user={user_id}",
+            status_code=303
+        )
+        
+    except ValueError:
+        logger.error(f"❌ Неверные параметры: topic_id={topic_id}, user_id={user_id}")
+        raise HTTPException(status_code=400, detail="Неверные параметры запроса")
+    except Exception as e:
+        logger.error(f"❌ Ошибка обработки запроса: {e}")
+        raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
