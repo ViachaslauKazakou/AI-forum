@@ -71,3 +71,26 @@ alembic-upgrade: ## Применить миграции
 
 alembic-downgrade: ## Откатить миграции
 	$(POETRY) run alembic downgrade -1
+
+# AI Manager команды
+ai-build: ## Собрать Docker образ AI Manager
+	$(DOCKER_COMPOSE) -f docker-compose.ai.yml build
+
+ai-up: ## Запустить AI Manager
+	$(DOCKER_COMPOSE) -f docker-compose.ai.yml up -d
+
+ai-down: ## Остановить AI Manager
+	$(DOCKER_COMPOSE) -f docker-compose.ai.yml down
+
+ai-logs: ## Показать логи AI Manager
+	$(DOCKER_COMPOSE) -f docker-compose.ai.yml logs -f ai_manager
+
+ai-restart: ai-down ai-up ## Перезапустить AI Manager
+
+ai-clean: ## Очистить AI Manager данные
+	$(DOCKER_COMPOSE) -f docker-compose.ai.yml down -v
+	docker system prune -f
+
+
+ai-dev: ## Запустить AI Manager локально для разработки
+	cd ai_manager && $(POETRY) install && $(POETRY) run uvicorn api.main:app --reload --host 0.0.0.0 --port 8080
