@@ -122,7 +122,6 @@ dmypy.json
 alembic/versions/
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo

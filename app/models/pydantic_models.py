@@ -1,27 +1,7 @@
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr
-from enum import Enum as PyEnum
-
-# from src.models.model import LanguageEnum, Status, UserRole
-
-
-class Status(str, PyEnum):
-    pending = "pending"
-    active = "active"
-    disabled = "disabled"
-    blocked = "Забанен"
-    deleted = "deleted"
-
-
-# Enum for user roles
-class UserRole(str, PyEnum):
-    admin = "admin"
-    user = "user"
-    ai_bot = "ai_bot"  # AI user with both admin and user capabilities
-    mixed = "mixed"  # User with both admin and user capabilities
-    mentor = "mentor"  # User with mentor capabilities
-    mentee = "mentee"  # User with mentee capabilities
+from shared_models.schemas import UserRole, Status  # TODO remove after migrate to shared_models
 
 
 class UserBaseModel(BaseModel):
@@ -38,5 +18,5 @@ class UserBaseModel(BaseModel):
 
 
 class GetUserModel(UserBaseModel):
-
+    
     id: int

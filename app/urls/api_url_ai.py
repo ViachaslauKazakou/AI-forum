@@ -3,7 +3,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
-from app.crud import topic_crud, message_crud
+from app.managers.db_manager import topic_crud, message_crud
 
 router = APIRouter(prefix="/api/ai", tags=["Ai-posting"])
 templates = Jinja2Templates(directory="app/templates")
@@ -22,8 +22,6 @@ templates.env.filters["nl2br"] = nl2br
 async def add_ai_post(request: Request):
     """Форма добавления AI поста"""
     return templates.TemplateResponse("add_ai_post.html", {"request": request})
-
-
 
 
 @router.get("/topics/{topic_id}", response_class=HTMLResponse)

@@ -1,14 +1,14 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, update
-from app.models.models import Topic, Message, User
-from app.models.schemas import TopicCreate, MessageCreate, TopicUpdate, MessageUpdate
+from shared_models.models import Topic, Message, User
+from shared_models.schemas import TopicCreate, MessageCreate, TopicUpdate, MessageUpdate
 from app.models.pydantic_models import UserBaseModel
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 
-class UserCRUD:
+class UserApi:
     @staticmethod
-    async def get_users_list(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[User]:
+    async def get_users_list(db: AsyncSession, skip: int = 0, limit: int = 100) -> Sequence[User]:
         """Получить список пользователей"""
         result = await db.execute(select(User).order_by(desc(User.created_at)).offset(skip).limit(limit))
         return result.scalars().all()
@@ -78,9 +78,9 @@ class UserCRUD:
         return False
 
 
-class TopicCRUD:
+class TopicApi:
     @staticmethod
-    async def get_topics_list(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Topic]:
+    async def get_topics_list(db: AsyncSession, skip: int = 0, limit: int = 100) -> Sequence[Topic]:
         """Получить список тем с количеством сообщений"""
         result = await db.execute(
             select(Topic).where(Topic.is_active).order_by(desc(Topic.updated_at)).offset(skip).limit(limit)
@@ -88,7 +88,7 @@ class TopicCRUD:
         return result.scalars().all()
 
     @staticmethod
-    async def get_all_topics(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Topic]:
+    async def get_all_topics(db: AsyncSession, skip: int = 0, limit: int = 100) -> Sequence[Topic]:
         """Получить все темы (включая неактивные) для админ-панели"""
         result = await db.execute(select(Topic).order_by(desc(Topic.updated_at)).offset(skip).limit(limit))
         return result.scalars().all()
@@ -135,7 +135,7 @@ class TopicCRUD:
         return False
 
 
-class MessageCRUD:
+class MessageApi:
     @staticmethod
     async def get_topic_messages(db: AsyncSession, topic_id: int, limit: int = 20) -> List[Message]:
         """Получить последние сообщения темы"""
@@ -146,16 +146,17 @@ class MessageCRUD:
         return list(reversed(messages))  # Показываем от старых к новым
 
     @staticmethod
-    async def get_all_messages(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Message]:
+    async def get_all_messages(db: AsyncSession, skip: int = 0, limit: int = 100) -> Sequence[Message]:
         """Получить все сообщения для админ-панели"""
         result = await db.execute(select(Message).order_by(desc(Message.created_at)).offset(skip).limit(limit))
         return result.scalars().all()
 
     @staticmethod
-    async def create_message(db: AsyncSession, message: MessageCreate) -> Message:
+    async def create_message(db: AsyncSession, message: MessageCreate, last_message_content: str = "") -> Message:
         """Создать новое сообщение"""
+        result_message = f"<div class='quote-message' style='border: 1px solid #007bff; padding-left: 20px; margin-bottom: 10px;'> {'<i>' + last_message_content[:50] + '...</i><br></div>' if last_message_content else ''}{message.content}"
         db_message = Message(
-            content=message.content,
+            content=result_message,
             author_name=message.author_name,
             topic_id=message.topic_id,
             parent_id=message.parent_id,
@@ -164,7 +165,7 @@ class MessageCRUD:
         db.add(db_message)
 
         # Обновляем время изменения темы
-        await db.execute(select(Topic).where(Topic.id == message.topic_id))
+        await db.execute(select(Topic).where(Topic.id == db_message.topic_id))
 
         await db.commit()
         await db.refresh(db_message)
@@ -200,9 +201,15 @@ class MessageCRUD:
             await db.commit()
             return True
         return False
+    
+    @staticmethod
+    async def get_username_by_id(db: AsyncSession, user_id: int) -> Optional[str]:
+        """Получить имя пользователя по ID"""
+        result = await db.execute(select(User.username).where(User.id == user_id))
+        return result.scalar_one_or_none()
 
 
 # Создаем экземпляры CRUD
-user_crud = UserCRUD()
-topic_crud = TopicCRUD()
-message_crud = MessageCRUD()
+user_crud = UserApi()
+topic_crud = TopicApi()
+message_crud = MessageApi()

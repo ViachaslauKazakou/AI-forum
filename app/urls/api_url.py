@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.database import get_db
-from app.crud import topic_crud, message_crud
-from app.models.schemas import (
+from app.managers.db_manager import topic_crud, message_crud
+from shared_models.schemas import (
     TopicCreate,
     TopicResponse,
     TopicWithMessages,

@@ -3,7 +3,6 @@
 Финальный тест исправленного RAG
 """
 import sys
-import os
 sys.path.append('/Users/Viachaslau_Kazakou/Work/AI-forum')
 
 from app.ai_manager.forum_manager import ForumManager

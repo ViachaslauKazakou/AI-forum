@@ -6,7 +6,7 @@ from fastapi.params import Depends
 from sqlalchemy import desc, select
 from app.database import get_db
 from app.models.models import User, Topic, Message, UsersContext
-from app.models.schemas import UserBaseContext
+from shared_models.schemas import UserBaseContext
 
 import json
 import asyncio

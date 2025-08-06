@@ -9,24 +9,24 @@
         
         {% if topics %}
             <div class="row">
-                {% for topic in topics %}
+                {% for topic_data in topics %}
                 <div class="col-12 mb-3">
                     <div class="card topic-card">
                         <div class="card-body">
                             <h5 class="card-title">
-                                <a href="/topics/{{ topic.id }}" class="text-decoration-none">
-                                    {{ topic.title }}
+                                <a href="/topics/{{ topic_data.topic.id }}" class="text-decoration-none">
+                                    {{ topic_data.topic.title }}
                                 </a>
                             </h5>
-                            {% if topic.description %}
-                            <p class="card-text text-muted">{{ topic.description[:100] }}{% if topic.description|length > 100 %}...{% endif %}</p>
+                            {% if topic_data.topic.description %}
+                            <p class="card-text text-muted">{{ topic_data.topic.description[:100] }}{% if topic_data.topic.description|length > 100 %}...{% endif %}</p>
                             {% endif %}
                             <div class="row text-muted small">
                                 <div class="col">
-                                    <i class="bi bi-calendar"></i> Создана: {{ topic.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                    <i class="bi bi-calendar"></i> Создана: {{ topic_data.topic.created_at.strftime('%d.%m.%Y %H:%M') }}
                                 </div>
                                 <div class="col text-end">
-                                    <i class="bi bi-chat"></i> Сообщений: {{ topic.message_count }}
+                                    <i class="bi bi-chat"></i> Сообщений: {{ topic_data.message_count }}
                                 </div>
                             </div>
                         </div>
