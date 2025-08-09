@@ -654,23 +654,11 @@ app/
 
 ### Модели SQLAlchemy
 
-Проект использует современный синтаксис SQLAlchemy 2.0 с типизацией:
-
-```python
-# Пример модели User
-class User(Base):
-    __tablename__ = "users"
-    
-    id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(String(100), unique=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True)
-    user_type: Mapped[Optional[UserRole]] = mapped_column(Enum(UserRole))
-    status: Mapped[Optional[Status]] = mapped_column(Enum(Status))
-    
-    # Relationships
-    topics: Mapped[List["Topic"]] = relationship("Topic", back_populates="user")
-    messages: Mapped[List["Message"]] = relationship("Message", back_populates="user")
-```
+Проект использует новейшие возможности SQLAlchemy 2.0:
+- `Mapped[Type]` для типизации полей
+- `mapped_column()` вместо `Column()`
+- `relationship()` с правильной типизацией
+- Enum типы для ролей и статусов пользователей
 
 ### Enum типы
 
@@ -780,4 +768,94 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ```
 PGPASSWORD=postgres psql -h 127.0.0.1 -p 5433 -U docker -d postgres -c "DELETE FROM messages; DELETE FROM topics;"
+```
+
+## 🐇 RabbitMQ + Celery (брокер задач)
+
+Ниже — минимальные инструкции для запуска RabbitMQ как брокера Celery и проверки работы очередей. Доменные статусы/результаты задач хранятся в таблице `tasks` (PostgreSQL), RabbitMQ отвечает за доставку задач воркерам.
+
+### 1) Запуск RabbitMQ (Docker)
+
+```bash
+# Запустить RabbitMQ с панелью управления (5672 — AMQP, 15672 — UI)
+docker run -d --name rabbitmq \
+  -p 5672:5672 -p 15672:15672 \
+  -e RABBITMQ_DEFAULT_USER=guest \
+  -e RABBITMQ_DEFAULT_PASS=guest \
+  rabbitmq:3-management
+
+# Проверить, что контейнер запущен
+docker ps --filter name=rabbitmq
+```
+
+Панель управления: http://localhost:15672 (логин/пароль: guest/guest)
+
+Остановить/удалить:
+```bash
+docker stop rabbitmq && docker rm rabbitmq
+```
+
+### 2) Настройки окружения
+
+В `.env` добавьте (или оставьте по умолчанию):
+```env
+RABBITMQ_URL=amqp://guest:guest@localhost:5672//
+```
+
+Проверьте, что FastAPI и воркер используют одинаковый `RABBITMQ_URL`.
+
+### 3) Запуск Celery-воркера
+
+Виртуальное окружение активируйте через Poetry или используйте `poetry run`:
+```bash
+# В отдельном терминале
+poetry run celery -A app.celery_tasks:celery_app worker -l info
+```
+
+Опционально: задать конкуренцию и имя воркера
+```bash
+poetry run celery -A app.celery_tasks:celery_app worker -l info -c 4 -n ai-forum@%h
+```
+
+### 4) Постановка задач
+
+Эндпоинт админки ставит задачу в очередь и создает запись в таблице `tasks`:
+- POST `/admin/messages/ai/create` с параметрами `topic_id`, `user_id`
+
+Поток:
+1) FastAPI создает запись в `tasks` (status=pending)
+2) Отправляет ID записи в Celery (`process_task.delay(task_id)`)
+3) Воркер обновляет статус: processing → completed/failed
+
+### 5) Просмотр очередей и задач
+
+- Веб-панель RabbitMQ: http://localhost:15672 → Queues → видны очереди, сообщения, потребители
+- Логи воркера Celery: терминал с `celery ... -l info`
+- Проверка таблицы `tasks`:
+```bash
+PGPASSWORD=postgres psql -h 127.0.0.1 -p 5433 -U docker -d postgres -c "SELECT id, status, started_at, completed_at FROM tasks ORDER BY id DESC LIMIT 20;"
+```
+
+### 6) Частые проблемы
+
+- Воркер не подключается:
+  - Проверьте `RABBITMQ_URL`
+  - Убедитесь, что порт 5672 открыт, контейнер запущен (`docker ps`)
+- Задачи не потребляются:
+  - Проверьте логи воркера
+  - Убедитесь, что импорт `process_task` выполняется (см. `app/celery_tasks.py`)
+- Зависимости:
+  - Текущих зависимостей Poetry (celery, kombu) достаточно для RabbitMQ (амqp-драйвер тянется транзитивно)
+
+### 7) Полезные команды RabbitMQ
+
+```bash
+# Просмотр очередей через CLI
+docker exec -it rabbitmq rabbitmqctl list_queues name messages consumers
+
+# Просмотр обменников
+docker exec -it rabbitmq rabbitmqctl list_exchanges name type
+
+# Просмотр биндингов
+docker exec -it rabbitmq rabbitmqctl list_bindings
 ```

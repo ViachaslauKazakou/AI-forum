@@ -7,7 +7,7 @@
 <div class="row">
     <div class="col-md-12 mb-4">
         <div class="row">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card text-white bg-primary mb-3">
                     <div class="card-header">
                         <i class="bi bi-people"></i> Пользователи
@@ -19,7 +19,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card text-white bg-success mb-3">
                     <div class="card-header">
                         <i class="bi bi-chat-dots"></i> Темы
@@ -31,7 +31,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card text-white bg-info mb-3">
                     <div class="card-header">
                         <i class="bi bi-envelope"></i> Сообщения
@@ -40,6 +40,70 @@
                         <h4 class="card-title">{{ stats.messages_count }}</h4>
                         <p class="card-text">Всего сообщений</p>
                         <a href="/admin/messages" class="btn btn-light">Управление</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-list-task"></i> Задачи
+                    </div>
+                    <div class="card-body">
+                        <h4 class="card-title">{{ stats.tasks_count }}</h4>
+                        <p class="card-text">Последние фоновые задачи</p>
+                        <a href="/admin/tasks" class="btn btn-light">Открыть</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        
+        <!-- Дополнительные быстрые действия -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card border-secondary">
+                    <div class="card-header">
+                        <h5><i class="bi bi-tags"></i> Управление категориями</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2 d-md-flex">
+                            <a href="/admin/categories" class="btn btn-outline-primary">
+                                <i class="bi bi-folder"></i> Категории
+                            </a>
+                            <a href="/admin/subcategories" class="btn btn-outline-success">
+                                <i class="bi bi-folder2"></i> Подкатегории
+                            </a>
+                            <a href="/admin/categories/create" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Создать категорию
+                            </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                Инфраструктура задач
+            </div>
+            <div class="card-body d-flex gap-2 flex-wrap">
+                <a class="btn btn-outline-primary" href="http://localhost:15672" target="_blank">RabbitMQ UI</a>
+                <a class="btn btn-outline-info" href="http://localhost:5555" target="_blank">Celery Flower</a>
+                <a class="btn btn-outline-success" href="/admin/tasks">Tasks (Postgres)</a>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-secondary">
+                    <div class="card-header">
+                        <h5><i class="bi bi-robot"></i> ИИ управление</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2 d-md-flex">
+                            <a href="/admin/users/1/ai-messages/create" class="btn btn-outline-info">
+                                <i class="bi bi-cpu"></i> Создать ИИ сообщение
+                            </a>
+                            <a href="/admin/messages" class="btn btn-outline-secondary">
+                                <i class="bi bi-chat-square-text"></i> Все сообщения
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

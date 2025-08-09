@@ -1,0 +1,44 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Задачи{% endblock %}
+{% block header %}Задачи (последние 50){% endblock %}
+
+{% block content %}
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Task UUID</th>
+        <th>Status</th>
+        <th>User</th>
+        <th>Topic</th>
+        <th>Created</th>
+        <th>Started</th>
+        <th>Completed</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr>
+        <td>{{ t.id }}</td>
+        <td>{{ t.task_id }}</td>
+        <td><span class="badge bg-secondary">{{ t.status }}</span></td>
+        <td>{{ t.user_id }}</td>
+        <td>{{ t.topic_id }}</td>
+        <td>{{ t.created_at }}</td>
+        <td>{{ t.started_at }}</td>
+        <td>{{ t.completed_at }}</td>
+        <td>
+          <a class="btn btn-sm btn-outline-primary" href="/admin/tasks/{{ t.id }}/edit">Edit</a>
+          <form method="post" action="/admin/tasks/{{ t.id }}/retry" style="display:inline-block; margin-left:6px;">
+            <button type="submit" class="btn btn-sm btn-outline-warning">Retry</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, Form, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from app.templates_config import templates
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,8 +13,10 @@ from shared_models.schemas import MessageCreate, TopicCreate, TopicUpdate, Messa
 import json
 from app.database import async_session_maker
 import logging
-import asyncio
-from app.managers.ai_manager import AIManager
+from sqlalchemy import insert, select, func
+from shared_models.models import Task  # используем модель из shared_models (таблица "tasks")
+from app.celery_tasks import process_task
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +41,19 @@ async def admin_dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     all_topics = await topic_crud.get_all_topics(db, limit=1000)
     all_messages = await message_crud.get_all_messages(db, limit=1000)
 
+    # Количество задач
+    tasks_count = 0
+    try:
+        res = await db.execute(select(func.count()).select_from(Task))
+        tasks_count = int(res.scalar() or 0)
+    except Exception as e:
+        logger.warning(f"Не удалось получить количество задач: {e}")
+
     stats = {
         "users_count": len(all_users),
         "topics_count": len(all_topics),
         "messages_count": len(all_messages),
+        "tasks_count": tasks_count,
     }
 
     return templates.TemplateResponse(
@@ -378,186 +389,146 @@ async def admin_ai_messages_create_form(request: Request, user_id: int, db: Asyn
 
 
 async def generate_and_save_ai_message(topic_id: str, user_id: str):
-    """Создание AI сообщения в фоновом режиме"""
-    
+    """Создание AI задачи: запись в таблицу tasks и постановка в очередь Celery"""
+
     try:
-        # Преобразуем строки в числа с валидацией
         topic_id_int = int(topic_id)
         user_id_int = int(user_id)
-        
-        logger.info(f"🚀 Начало генерации ИИ сообщения: topic_id={topic_id_int}, user_id={user_id_int}")
-        
-        # Создаем новую сессию БД для фоновой задачи
+
+        payload = {
+            "topic_id": topic_id_int,
+            "user_id": user_id_int,
+        }
+
+        task_uuid = str(uuid.uuid4())
+        question_text = f"Generate AI message for topic {topic_id_int} and user {user_id_int}"
+        context_text = json.dumps(payload)
+
         async with async_session_maker() as db:
-            try:
-                # Проверяем существование темы
-                topic = await topic_crud.get_topic_by_id(db, topic_id_int)
-                if not topic:
-                    logger.error(f"❌ Тема {topic_id_int} не найдена")
-                    return
-                
-                # Получаем последние сообщения из темы (больше контекста)
-                recent_messages = await message_crud.get_topic_messages(db, topic_id_int, limit=5)
-                if not recent_messages:
-                    logger.error(f"❌ Нет сообщений в теме {topic_id_int}")
-                    return
-                
-                # Получаем пользователя по user_id
-                user = await user_crud.get_user_by_id(db, user_id_int)
-                if not user:
-                    logger.error(f"❌ Пользователь {user_id_int} не найден")
-                    return
-                
-                logger.info(f"🎭 Генерация ответа от {user.username} для темы '{topic.title}'")
-                
-                # Создаем контекст из последних сообщений
-                context = "\n".join([f"{msg.author_name}: {msg.content}" for msg in reversed(recent_messages[-3:])])
-                last_message_content = recent_messages[0].content
-                
-                # Инициализируем ИИ менеджер
-                ai_manager = ForumManager()
-                
-                # Создаем расширенный запрос с контекстом
-                enhanced_query = f"Контекст последних сообщений:\n{context}\n\nОтветь на: {last_message_content}"
-                
-                # Генерируем ответ от ИИ персонажа асинхронно
-                logger.info(f"🤖 Запуск генерации ответа для персонажа {user.username}")
-                
-                # Добавляем таймаут для генерации (максимум 60 секунд)
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        ai_manager.ask_as_character,
-                        enhanced_query,  # Используем расширенный запрос с контекстом
-                        user.username,
-                        mood="sarcastic"
-                    ),
-                    timeout=60.0
-                )
-                
-                logger.info(f"📝 Получен ответ от ИИ: {str(response)[:100]}...")
-                
-                # Обрабатываем ответ
-                answer = None
-                if isinstance(response, dict):
-                    if 'result' in response:
-                        try:
-                            # Пытаемся парсить как JSON
-                            if isinstance(response['result'], str):
-                                result = json.loads(response['result'])
-                                answer = result.get('content', response['result'])
-                            else:
-                                answer = response['result']
-                        except json.JSONDecodeError:
-                            # Если не JSON, используем как есть
-                            answer = response['result']
-                    else:
-                        answer = str(response)
-                elif isinstance(response, str):
-                    try:
-                        result = json.loads(response)
-                        answer = result.get('content', response)
-                    except json.JSONDecodeError:
-                        answer = response
-                else:
-                    answer = str(response)
-                
-                if not answer or answer.strip() == "":
-                    logger.error("❌ ИИ вернул пустой ответ")
-                    return
-                
-                logger.info(f"✅ Обработанный ответ: {answer[:100]}...")
-                
-                # Создаем сообщение
-                message_data = MessageCreate(
-                    content=answer,
-                    author_name=user.username,
-                    topic_id=topic_id_int,
+            # Вставляем запись задачи и получаем её id (таблица "tasks")
+            stmt = (
+                insert(Task)
+                .values(
+                    task_id=task_uuid,
                     user_id=user_id_int,
-                    parent_id=recent_messages[0].id if recent_messages else None
+                    topic_id=topic_id_int,
+                    question=question_text,
+                    context=context_text,
+                    status="pending",
                 )
-                
-                # Сохраняем в БД
-                created_message = await message_crud.create_message(db, message_data)
-                
-                logger.info(f"✅ ИИ сообщение создано: ID={created_message.id}, тема={topic.title}")
-                
-                # Фиксируем изменения в БД
-                await db.commit()
-                
-            except asyncio.TimeoutError:
-                logger.error(f"⏰ Таймаут генерации ИИ сообщения для темы {topic_id_int}")
-                await db.rollback()
-            except Exception as db_error:
-                logger.error(f"❌ Ошибка работы с БД: {db_error}")
-                await db.rollback()
-                raise
-                
+                .returning(Task.id)
+            )
+            result = await db.execute(stmt)
+            task_id_db = result.scalar_one()
+            await db.commit()
+
+        # Отправляем задачу воркеру Celery по id записи
+        process_task.delay(task_id_db)
+
+        logger.info(
+            f"🚀 Задача поставлена в очередь: task_id={task_id_db}, topic_id={topic_id_int}, user_id={user_id_int}"
+        )
+
     except ValueError as ve:
         logger.error(f"❌ Ошибка валидации параметров: {ve}")
     except Exception as e:
-        logger.error(f"❌ Критическая ошибка создания ИИ сообщения: {e}")
+        logger.error(f"❌ Критическая ошибка постановки задачи: {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
 
 
 @router.post("/messages/ai/create")
 async def admin_ai_messages_create(
-    background_tasks: BackgroundTasks,
     topic_id: str = Form(...),
     user_id: str = Form(...)
 ):
-    """Создание ИИ сообщения с асинхронной обработкой"""
+    """Создание ИИ сообщения через таблицу tasks и Celery"""
     try:
         # Валидация входных данных
-        topic_id_int = int(topic_id)
-        user_id_int = int(user_id)
-        ai_manager = AIManager()
-        logger.info(f"📨 Получен запрос на создание ИИ сообщения: topic_id={topic_id_int}, user_id={user_id_int}")
-        # Получаем последние сообщения из темы (больше контекста)
-        # Создаем новую сессию БД для фоновой задачи
-        async with async_session_maker() as db:
-            recent_messages = await message_crud.get_topic_messages(db, topic_id_int, limit=5)
-        if not recent_messages:
-            logger.error(f"❌ Нет сообщений в теме {topic_id_int}")
-            return
-                
-        # Получаем пользователя по user_id
-        user = await user_crud.get_user_by_id(db, user_id_int)
-        if not user:
-            logger.error(f"❌ Пользователь {user_id_int} не найден")
-            return
-                
-        logger.info(f"🎭 Генерация ответа от {user.username} для темы '{topic_id}'")
-        # Запуск в фоне с улучшенной обработкой
-        # Создаем контекст из последних сообщений
-        context = "\n".join([f"{msg.author_name}: {msg.content}" for msg in reversed(recent_messages[-3:])])
-        last_message_content = recent_messages[0].content
-        # reply_message_id = recent_messages[0].id if recent_messages else None
-        
-        # Создаем расширенный запрос с контекстом
-        enhanced_query = f"Контекст последних сообщений:\n{context}\n\nОтветь на: {last_message_content}"
-                
-        background_tasks.add_task(
-            ai_manager.generate_and_save_ai_message,
-            topic_id,
-            user_id,
-            enhanced_query,
-            last_message_content,
-        )
-        
-        logger.info(f"🚀 Задача добавлена в очередь для topic_id={topic_id_int}")
-        
-        # Немедленный редирект с индикатором
+        int(topic_id)
+        int(user_id)
+
+        # Создаём запись в tasks и отправляем в Celery
+        await generate_and_save_ai_message(topic_id, user_id)
+
+        logger.info(f"🚀 Задача добавлена в очередь для topic_id={topic_id}, user_id={user_id}")
         return RedirectResponse(
             url=f"/topics/{topic_id}?generating=true&ai_user={user_id}",
             status_code=303
         )
-        
+
     except ValueError:
         logger.error(f"❌ Неверные параметры: topic_id={topic_id}, user_id={user_id}")
         raise HTTPException(status_code=400, detail="Неверные параметры запроса")
     except Exception as e:
         logger.error(f"❌ Ошибка обработки запроса: {e}")
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
+
+
+# =============================================================================
+# TASK MANAGEMENT
+# =============================================================================
+
+
+@router.get("/tasks", response_class=HTMLResponse)
+async def admin_tasks_list(request: Request, db: AsyncSession = Depends(get_db)):
+    """Список задач (tasks)"""
+    try:
+        res = await db.execute(
+            select(Task).order_by(Task.id.desc()).limit(50)
+        )
+        tasks = res.scalars().all()
+    except Exception as e:
+        logger.error(f"Ошибка получения списка задач: {e}")
+        tasks = []
+    return templates.TemplateResponse("admin/tasks_list.html", {"request": request, "tasks": tasks})
+
+
+@router.get("/tasks/{task_id}/edit", response_class=HTMLResponse)
+async def admin_tasks_edit_form(request: Request, task_id: int, db: AsyncSession = Depends(get_db)):
+    """Форма редактирования задачи"""
+    res = await db.execute(select(Task).where(Task.id == task_id))
+    task = res.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    return templates.TemplateResponse("admin/tasks_edit.html", {"request": request, "task": task})
+
+
+@router.post("/tasks/{task_id}/edit")
+async def admin_tasks_edit(
+    request: Request,
+    task_id: int,
+    status: str = Form(...),
+    result: str = Form("") ,
+    error_message: str = Form("") ,
+    db: AsyncSession = Depends(get_db),
+):
+    """Обновление полей задачи"""
+    res = await db.execute(select(Task).where(Task.id == task_id))
+    task = res.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    task.status = status
+    if hasattr(task, "result"):
+        task.result = result or None
+    if hasattr(task, "error_message"):
+        task.error_message = error_message or None
+    await db.commit()
+    return RedirectResponse(url="/admin/tasks", status_code=303)
+
+
+@router.post("/tasks/{task_id}/retry")
+async def admin_tasks_retry(task_id: int, db: AsyncSession = Depends(get_db)):
+    """Переотправить задачу в Celery по ID записи"""
+    # убедимся, что задача существует
+    res = await db.execute(select(Task).where(Task.id == task_id))
+    task = res.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    # ставим статус pending и отправляем
+    task.status = "pending"
+    await db.commit()
+    process_task.delay(task_id)
+    return RedirectResponse(url="/admin/tasks", status_code=303)
 
 

@@ -1,0 +1,28 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Редактирование задачи #{{ task.id }}{% endblock %}
+{% block header %}Редактирование задачи #{{ task.id }}{% endblock %}
+
+{% block content %}
+<form method="post" action="/admin/tasks/{{ task.id }}/edit">
+  <div class="mb-3">
+    <label class="form-label">Статус</label>
+    <select class="form-select" name="status">
+      {% set statuses = ["pending", "processing", "completed", "failed"] %}
+      {% for s in statuses %}
+        <option value="{{ s }}" {% if task.status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Результат</label>
+    <textarea class="form-control" name="result" rows="4">{{ task.result or '' }}</textarea>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Ошибка</label>
+    <textarea class="form-control" name="error_message" rows="3">{{ task.error_message or '' }}</textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Сохранить</button>
+  <a href="/admin/tasks" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}

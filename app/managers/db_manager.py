@@ -102,7 +102,13 @@ class TopicApi:
     @staticmethod
     async def create_topic(db: AsyncSession, topic: TopicCreate) -> Topic:
         """Создать новую тему"""
-        db_topic = Topic(title=topic.title, description=topic.description, user_id=getattr(topic, "user_id", None))
+        db_topic = Topic(
+            title=topic.title,
+            description=topic.description,
+            user_id=getattr(topic, "user_id", None),
+            category_id=getattr(topic, "category_id", None),
+            subcategory_id=getattr(topic, "subcategory_id", None),
+        )
         db.add(db_topic)
         await db.commit()
         await db.refresh(db_topic)
@@ -118,6 +124,8 @@ class TopicApi:
                 title=topic_data.title,
                 description=topic_data.description,
                 is_active=topic_data.is_active,
+                category_id=getattr(topic_data, "category_id", None),
+                subcategory_id=getattr(topic_data, "subcategory_id", None),
             )
             .returning(Topic)
         )

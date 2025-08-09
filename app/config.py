@@ -14,14 +14,17 @@ class ForumSettings(BaseSettings):
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+asyncpg://docker:docker@localhost:5433/postgres")
     
     # AI Manager
-    AI_MANAGER_URL: str = os.getenv("AI_MANAGER_URL", "http://localhost:8080")
+    AI_MANAGER_URL: str = os.getenv("AI_MANAGER_URL", "http://localhost:8000")
     AI_MANAGER_API_KEY: Optional[str] = os.getenv("AI_MANAGER_API_KEY", "your-ai-manager-api-key-here")
     
     # RAG Service
     RAG_MANAGER_URL: Optional[str] = os.getenv("RAG_MANAGER_URL")
     RAG_SERVICE_API_KEY: Optional[str] = os.getenv("RAG_SERVICE_API_KEY")
 
-    # Redis
+    # RabbitMQ (Celery broker)
+    RABBITMQ_URL: str = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672//")
+
+    # Redis (может использоваться как кэш/альтернативный брокер)
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     
     # Ollama
