@@ -1,0 +1,60 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if subcategory %}Редактировать подкатегорию{% else %}Создать подкатегорию{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        {% if subcategory %}
+                            Редактировать подкатегорию: {{ subcategory.name }}
+                        {% else %}
+                            Создать новую подкатегорию
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div class="form-group">
+                            <label for="name">Название подкатегории *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ subcategory.name if subcategory else '' }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="category_id">Категория *</label>
+                            <select class="form-control" id="category_id" name="category_id" required>
+                                <option value="">Выберите категорию</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" 
+                                        {% if (subcategory and subcategory.category_id == category.id) or (selected_category_id and selected_category_id == category.id) %}selected{% endif %}>
+                                    {{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">Описание</label>
+                            <textarea class="form-control" id="description" name="description" rows="3">{{ subcategory.description if subcategory else '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> 
+                                {% if subcategory %}Сохранить изменения{% else %}Создать подкатегорию{% endif %}
+                            </button>
+                            <a href="/admin/subcategories" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Назад к списку
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

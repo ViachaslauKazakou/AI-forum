@@ -204,3 +204,17 @@ def smart_content(text):
     
     # И наконец безопасная очистка
     return safe_html(text_with_breaks)
+
+
+def regex_replace(text, pattern, replacement=''):
+    """
+    Заменяет текст по регулярному выражению
+    """
+    if not text:
+        return ""
+    
+    try:
+        return re.sub(pattern, replacement, text)
+    except re.error:
+        # Если регулярное выражение невалидно, возвращаем исходный текст
+        return text

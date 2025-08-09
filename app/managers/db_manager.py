@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, update
-from shared_models.models import Topic, Message, User
+from sqlalchemy import select, desc, update, func
+from sqlalchemy.orm import selectinload
+from shared_models.models import Topic, Message, User, Category, Subcategory
 from shared_models.schemas import TopicCreate, MessageCreate, TopicUpdate, MessageUpdate
 from app.models.pydantic_models import UserBaseModel
 from typing import List, Optional, Sequence
@@ -81,22 +82,37 @@ class UserApi:
 class TopicApi:
     @staticmethod
     async def get_topics_list(db: AsyncSession, skip: int = 0, limit: int = 100) -> Sequence[Topic]:
-        """Получить список тем с количеством сообщений"""
+        """Получить список тем с количеством сообщений с предзагрузкой связанных данных"""
         result = await db.execute(
-            select(Topic).where(Topic.is_active).order_by(desc(Topic.updated_at)).offset(skip).limit(limit)
+            select(Topic)
+            .options(selectinload(Topic.category), selectinload(Topic.subcategory))
+            .where(Topic.is_active)
+            .order_by(desc(Topic.updated_at))
+            .offset(skip)
+            .limit(limit)
         )
         return result.scalars().all()
 
     @staticmethod
     async def get_all_topics(db: AsyncSession, skip: int = 0, limit: int = 100) -> Sequence[Topic]:
-        """Получить все темы (включая неактивные) для админ-панели"""
-        result = await db.execute(select(Topic).order_by(desc(Topic.updated_at)).offset(skip).limit(limit))
+        """Получить все темы (включая неактивные) для админ-панели с предзагрузкой связанных данных"""
+        result = await db.execute(
+            select(Topic)
+            .options(selectinload(Topic.category), selectinload(Topic.subcategory))
+            .order_by(desc(Topic.updated_at))
+            .offset(skip)
+            .limit(limit)
+        )
         return result.scalars().all()
 
     @staticmethod
     async def get_topic_by_id(db: AsyncSession, topic_id: int) -> Optional[Topic]:
-        """Получить тему по ID"""
-        result = await db.execute(select(Topic).where(Topic.id == topic_id))
+        """Получить тему по ID с предзагрузкой связанных данных"""
+        result = await db.execute(
+            select(Topic)
+            .options(selectinload(Topic.category), selectinload(Topic.subcategory))
+            .where(Topic.id == topic_id)
+        )
         return result.scalar_one_or_none()
 
     @staticmethod
@@ -160,6 +176,28 @@ class MessageApi:
         return result.scalars().all()
 
     @staticmethod
+    async def get_recent_messages_with_topics(db: AsyncSession, limit: int = 10):
+        """Получить последние сообщения с информацией о топиках"""
+        from shared_models import Topic
+        
+        result = await db.execute(
+            select(Message, Topic)
+            .join(Topic, Message.topic_id == Topic.id)
+            .order_by(desc(Message.created_at))
+            .limit(limit)
+        )
+        
+        messages_with_topics = []
+        for row in result:
+            message, topic = row
+            messages_with_topics.append({
+                'message': message,
+                'topic': topic
+            })
+        
+        return messages_with_topics
+
+    @staticmethod
     async def create_message(db: AsyncSession, message: MessageCreate, last_message_content: str = "") -> Message:
         """Создать новое сообщение"""
         result_message = f"<div class='quote-message' style='border: 1px solid #007bff; padding-left: 20px; margin-bottom: 10px;'> {'<i>' + last_message_content[:50] + '...</i><br></div>' if last_message_content else ''}{message.content}"
@@ -217,7 +255,122 @@ class MessageApi:
         return result.scalar_one_or_none()
 
 
+class CategoryApi:
+    @staticmethod
+    async def get_categories_list(db: AsyncSession, skip: int = 0, limit: int = 100) -> Sequence[Category]:
+        """Получить список категорий"""
+        result = await db.execute(
+            select(Category).order_by(Category.name).offset(skip).limit(limit)
+        )
+        return result.scalars().all()
+
+    @staticmethod
+    async def get_category_by_id(db: AsyncSession, category_id: int) -> Optional[Category]:
+        """Получить категорию по ID"""
+        result = await db.execute(select(Category).where(Category.id == category_id))
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def create_category(db: AsyncSession, name: str, description: str = "") -> Category:
+        """Создать новую категорию"""
+        db_category = Category(name=name, description=description)
+        db.add(db_category)
+        await db.commit()
+        await db.refresh(db_category)
+        return db_category
+
+    @staticmethod
+    async def update_category(db: AsyncSession, category_id: int, name: str, description: str = "") -> Optional[Category]:
+        """Обновить категорию"""
+        result = await db.execute(
+            update(Category)
+            .where(Category.id == category_id)
+            .values(name=name, description=description)
+            .returning(Category)
+        )
+        await db.commit()
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def delete_category(db: AsyncSession, category_id: int) -> bool:
+        """Удалить категорию"""
+        category = await db.get(Category, category_id)
+        if category:
+            await db.delete(category)
+            await db.commit()
+            return True
+        return False
+
+    @staticmethod
+    async def get_categories_with_topic_count(db: AsyncSession) -> List[dict]:
+        """Получить категории с количеством топиков"""
+        result = await db.execute(
+            select(
+                Category,
+                func.count(Topic.id).label('topic_count')
+            )
+            .outerjoin(Topic, (Topic.category_id == Category.id) & Topic.is_active)
+            .group_by(Category.id)
+            .order_by(Category.name)
+        )
+        return [{"category": row[0], "topic_count": row[1]} for row in result.all()]
+
+
+class SubcategoryApi:
+    @staticmethod
+    async def get_subcategories_list(db: AsyncSession, category_id: Optional[int] = None, skip: int = 0, limit: int = 100) -> Sequence[Subcategory]:
+        """Получить список подкатегорий с предзагрузкой связанных категорий"""
+        query = select(Subcategory).options(selectinload(Subcategory.category)).order_by(Subcategory.name)
+        if category_id:
+            query = query.where(Subcategory.category_id == category_id)
+        result = await db.execute(query.offset(skip).limit(limit))
+        return result.scalars().all()
+
+    @staticmethod
+    async def get_subcategory_by_id(db: AsyncSession, subcategory_id: int) -> Optional[Subcategory]:
+        """Получить подкатегорию по ID с предзагрузкой связанных данных"""
+        result = await db.execute(
+            select(Subcategory)
+            .options(selectinload(Subcategory.category))
+            .where(Subcategory.id == subcategory_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def create_subcategory(db: AsyncSession, name: str, category_id: int, description: str = "") -> Subcategory:
+        """Создать новую подкатегорию"""
+        db_subcategory = Subcategory(name=name, category_id=category_id, description=description)
+        db.add(db_subcategory)
+        await db.commit()
+        await db.refresh(db_subcategory)
+        return db_subcategory
+
+    @staticmethod
+    async def update_subcategory(db: AsyncSession, subcategory_id: int, name: str, category_id: int, description: str = "") -> Optional[Subcategory]:
+        """Обновить подкатегорию"""
+        result = await db.execute(
+            update(Subcategory)
+            .where(Subcategory.id == subcategory_id)
+            .values(name=name, category_id=category_id, description=description)
+            .returning(Subcategory)
+        )
+        await db.commit()
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def delete_subcategory(db: AsyncSession, subcategory_id: int) -> bool:
+        """Удалить подкатегорию"""
+        subcategory = await db.get(Subcategory, subcategory_id)
+        if subcategory:
+            await db.delete(subcategory)
+            await db.commit()
+            return True
+        return False
+
+
 # Создаем экземпляры CRUD
 user_crud = UserApi()
 topic_crud = TopicApi()
 message_crud = MessageApi()
+category_crud = CategoryApi()
+subcategory_crud = SubcategoryApi()

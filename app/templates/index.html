@@ -7,56 +7,223 @@
     <div class="col-md-8">
         <h1>Темы форума</h1>
         
-        {% if topics %}
+        <!-- Категории с топиками -->
+        {% if categories_data %}
+            {% for category_data in categories_data %}
+            <div class="category-section mb-4">
+                <h5 class="category-title">
+                    <i class="bi bi-folder"></i> {{ category_data.category.name }}
+                    <span class="badge bg-secondary">{{ category_data.total_topics }}</span>
+                </h5>
+                {% if category_data.category.description %}
+                <p class="text-muted">{{ category_data.category.description }}</p>
+                {% endif %}
+                
+                <div class="row">
+                    {% for topic_data in category_data.topics %}
+                    <div class="col-12 mb-2">
+                        <div class="card topic-card">
+                            <div class="card-body py-2">
+                                <h6 class="card-title mb-1">
+                                    <a href="/topics/{{ topic_data.topic.id }}" class="text-decoration-none">
+                                        {{ topic_data.topic.title }}
+                                    </a> 
+                                    {% if topic_data.topic.subcategory %}
+                                        <span class="badge bg-light text-dark">{{ topic_data.topic.subcategory.name }}</span>
+                                    {% endif %} 
+                                </h6>
+                                <!-- {% if topic_data.topic.description %}
+                                <p class="card-text small text-muted mb-1">{{ topic_data.topic.description[:80] }}{% if topic_data.topic.description|length > 80 %}...{% endif %}</p>
+                                {% endif %} -->
+                                <div class="row text-muted small">
+                                    <div class="col-lg-2 col-sm-12">
+                                        <i class="bi bi-calendar"></i> {{ topic_data.topic.created_at.strftime('%d.%m.%Y') }}
+                                    </div>
+                                    <div class="col-lg-8 col-sm-6">                
+                                        {% if topic_data.topic.description %}
+                                            {{ topic_data.topic.description[:50] }}
+                                        {% if topic_data.topic.description|length > 50 %}...{% endif %}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-2 text-end">
+                                        <i class="bi bi-chat"></i> {{ topic_data.message_count }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if category_data.total_topics > category_data.topics|length %}
+                    <div class="col-12">
+                        <div class="text-center">
+                            <a href="/category/{{ category_data.category.id }}" class="btn btn-outline-primary btn-sm">
+                                Показать все {{ category_data.total_topics }} тем
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+        
+        <!-- Топики без категории -->
+        {% if uncategorized_topics %}
+        <div class="category-section mb-4">
+            <h5 class="category-title">
+                <i class="bi bi-question-circle"></i> Без категории
+                <span class="badge bg-secondary">{{ total_uncategorized }}</span>
+            </h5>
+
             <div class="row">
-                {% for topic_data in topics %}
-                <div class="col-12 mb-3">
+                {% for topic_data in uncategorized_topics %}
+                <div class="col-12 mb-2">
                     <div class="card topic-card">
-                        <div class="card-body">
-                            <h5 class="card-title">
+                        <div class="card-body py-2">
+                            <h6 class="card-title mb-1">
                                 <a href="/topics/{{ topic_data.topic.id }}" class="text-decoration-none">
                                     {{ topic_data.topic.title }}
                                 </a>
-                            </h5>
+                            </h6>
                             {% if topic_data.topic.description %}
-                            <p class="card-text text-muted">{{ topic_data.topic.description[:100] }}{% if topic_data.topic.description|length > 100 %}...{% endif %}</p>
+                            <p class="card-text small text-muted mb-1">{{ topic_data.topic.description[:80] }}{% if topic_data.topic.description|length > 80 %}...{% endif %}</p>
                             {% endif %}
                             <div class="row text-muted small">
                                 <div class="col">
-                                    <i class="bi bi-calendar"></i> Создана: {{ topic_data.topic.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                    <i class="bi bi-calendar"></i> {{ topic_data.topic.created_at.strftime('%d.%m.%Y') }}
                                 </div>
                                 <div class="col text-end">
-                                    <i class="bi bi-chat"></i> Сообщений: {{ topic_data.message_count }}
+                                    <i class="bi bi-chat"></i> {{ topic_data.message_count }}
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
+                
+                {% if total_uncategorized > uncategorized_topics|length %}
+                <div class="col-12">
+                    <div class="text-center">
+                        <a href="/uncategorized" class="btn btn-outline-primary btn-sm">
+                            Показать все {{ total_uncategorized }} тем
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
             </div>
-        {% else %}
-            <div class="alert alert-info">
-                <h4>Пока нет тем</h4>
-                <p>Будьте первым, кто создаст тему!</p>
-                <a href="/create-topic" class="btn btn-primary">Создать тему</a>
-            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Если нет тем вообще -->
+        {% if not categories_data and not uncategorized_topics %}
+        <div class="alert alert-info">
+            <h4>Пока нет тем</h4>
+            <p>Будьте первым, кто создаст тему!</p>
+            <a href="/create-topic" class="btn btn-primary">Создать тему</a>
+        </div>
         {% endif %}
     </div>
     
     <div class="col-md-4">
-        <div class="card">
+        <div class="card mt-3">
             <div class="card-header">
-                <h5>Действия</h5>
+                <h6><i class="bi bi-plus-circle"></i> Действия</h6>
             </div>
             <div class="card-body">
                 <a href="/create-topic" class="btn btn-primary w-100 mb-2">
-                    Создать новую тему
+                    <i class="bi bi-plus"></i> Создать новую тему
                 </a>
                 <div class="text-muted small">
-                    Всего тем: {{ topics|length }}
+                    {% set total_topics = (categories_data | map(attribute='total_topics') | sum) + total_uncategorized %}
+                    Всего тем: {{ total_topics }}
                 </div>
             </div>
         </div>
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> Последние сообщения</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_messages %}
+                    {% for item in recent_messages %}
+                    <div class="message-item mb-3 pb-2 border-bottom">
+                        <div class="message-content">
+                            <small class="text-muted d-block mb-1">
+                                <i class="bi bi-person"></i> {{ item.message.author_name }}
+                                <span class="float-end">{{ item.message.created_at.strftime('%d.%m %H:%M') }}</span>
+                            </small>
+                            <div class="message-text">
+                                {% set clean_content = item.message.content | regex_replace('<[^>]*>', '') | trim %}
+                                {{ clean_content[:100] }}{% if clean_content|length > 100 %}...{% endif %}
+                            </div>
+                            <small class="text-primary">
+                                <i class="bi bi-arrow-right"></i> 
+                                <a href="/topics/{{ item.topic.id }}" class="text-decoration-none">
+                                    {{ item.topic.title[:40] }}{% if item.topic.title|length > 40 %}...{% endif %}
+                                </a>
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <div class="text-center mt-3">
+                        <a href="/admin/messages" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-list"></i> Все сообщения
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="bi bi-chat-dots"></i>
+                        <p class="mb-0">Пока нет сообщений</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if categories_data %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6>Разделы</h6>
+            </div>
+            <div class="card-body">
+                {% for category_data in categories_data %}
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span>{{ category_data.category.name }}</span>
+                    <span class="badge bg-primary">{{ category_data.total_topics }}</span>
+                </div>
+                {% endfor %}
+                {% if uncategorized_topics %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Без категории</span>
+                    <span class="badge bg-secondary">{{ total_uncategorized }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
+
+<style>
+.category-title {
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.topic-card {
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.topic-card:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.category-section {
+    border-left: 4px solid #007bff;
+    padding-left: 1rem;
+}
+</style>
 {% endblock %}

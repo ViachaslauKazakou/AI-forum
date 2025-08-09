@@ -36,6 +36,7 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
             },
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": true,
             "python": "${workspaceFolder}/.venv/bin/python",
             "jinja": true

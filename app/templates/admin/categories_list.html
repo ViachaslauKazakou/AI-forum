@@ -1,0 +1,65 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Категории{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">Категории</h3>
+                    <a href="/admin/categories/create" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Добавить категорию
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if categories %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Название</th>
+                                    <th>Описание</th>
+                                    <th>Количество топиков</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in categories %}
+                                <tr>
+                                    <td>{{ item.category.id }}</td>
+                                    <td>{{ item.category.name }}</td>
+                                    <td>{{ item.category.description or "-" }}</td>
+                                    <td>{{ item.topic_count }}</td>
+                                    <td>
+                                        <a href="/admin/categories/{{ item.category.id }}/edit" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit"></i> Редактировать
+                                        </a>
+                                        <a href="/admin/subcategories?category_id={{ item.category.id }}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-list"></i> Подкатегории
+                                        </a>
+                                        <form method="post" action="/admin/categories/{{ item.category.id }}/delete" style="display: inline;">
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены, что хотите удалить эту категорию?')">
+                                                <i class="fas fa-trash"></i> Удалить
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Категории не найдены. 
+                        <a href="/admin/categories/create">Создайте первую категорию</a>.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

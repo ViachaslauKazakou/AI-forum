@@ -43,6 +43,35 @@
                         <div class="form-text">Неактивные темы скрыты от обычных пользователей</div>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="category_id" class="form-label">Категория</label>
+                        <select class="form-select" id="category_id" name="category_id">
+                            <option value="">Без категории</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" 
+                                    {% if topic.category_id == category.id %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Выберите категорию темы (необязательно)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="subcategory_id" class="form-label">Подкатегория</label>
+                        <select class="form-select" id="subcategory_id" name="subcategory_id">
+                            <option value="">Без подкатегории</option>
+                            {% for subcategory in subcategories %}
+                            <option value="{{ subcategory.id }}" 
+                                    data-category="{{ subcategory.category_id }}"
+                                    {% if topic.subcategory_id == subcategory.id %}selected{% endif %}>
+                                {{ subcategory.name }} ({{ subcategory.category.name if subcategory.category else 'Без категории' }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Выберите подкатегорию темы (необязательно)</div>
+                    </div>
+
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="/admin/topics" class="btn btn-secondary me-md-2">Отмена</a>
                         <button type="submit" class="btn btn-primary">
@@ -76,6 +105,26 @@
                         <span class="badge bg-secondary">Неактивна</span>
                     {% endif %}
                 </p>
+                <p><strong>Категория:</strong> 
+                    {% if topic.category_id %}
+                        ID: {{ topic.category_id }}
+                        {% if topic.category %}
+                            ({{ topic.category.name }})
+                        {% endif %}
+                    {% else %}
+                        Не указана
+                    {% endif %}
+                </p>
+                <p><strong>Подкатегория:</strong> 
+                    {% if topic.subcategory_id %}
+                        ID: {{ topic.subcategory_id }}
+                        {% if topic.subcategory %}
+                            ({{ topic.subcategory.name }})
+                        {% endif %}
+                    {% else %}
+                        Не указана
+                    {% endif %}
+                </p>
             </div>
         </div>
 
@@ -92,4 +141,36 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.getElementById('category_id');
+    const subcategorySelect = document.getElementById('subcategory_id');
+    const allSubcategories = Array.from(subcategorySelect.options);
+
+    function filterSubcategories() {
+        const selectedCategoryId = categorySelect.value;
+        const currentSubcategoryValue = subcategorySelect.value;
+        
+        // Очищаем подкатегории
+        subcategorySelect.innerHTML = '<option value="">Без подкатегории</option>';
+        
+        // Добавляем подкатегории выбранной категории
+        allSubcategories.slice(1).forEach(option => {
+            if (!selectedCategoryId || option.dataset.category === selectedCategoryId) {
+                const newOption = option.cloneNode(true);
+                subcategorySelect.appendChild(newOption);
+                
+                // Восстанавливаем выбранное значение если возможно
+                if (newOption.value === currentSubcategoryValue) {
+                    newOption.selected = true;
+                }
+            }
+        });
+    }
+
+    categorySelect.addEventListener('change', filterSubcategories);
+    filterSubcategories(); // Инициализация
+});
+</script>
 {% endblock %}

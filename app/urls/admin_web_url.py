@@ -4,7 +4,7 @@ from app.templates_config import templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from app.database import get_db
-from app.managers.db_manager import user_crud, topic_crud, message_crud
+from app.managers.db_manager import user_crud, topic_crud, message_crud, category_crud, subcategory_crud
 # from app.models.pydantic_models import UserRole, Status
 from app.models.pydantic_models import UserBaseModel
 from shared_models.schemas import UserRole, Status
@@ -15,7 +15,7 @@ from app.database import async_session_maker
 import logging
 from sqlalchemy import insert, select, func
 from shared_models.models import Task  # используем модель из shared_models (таблица "tasks")
-from app.celery_tasks import process_task
+from app.celery_tasks import celery_app
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -235,7 +235,14 @@ async def admin_topics_list(request: Request, db: AsyncSession = Depends(get_db)
 async def admin_topics_create_form(request: Request, db: AsyncSession = Depends(get_db)):
     """Форма создания темы"""
     users = await user_crud.get_users_list(db, limit=100)
-    return templates.TemplateResponse("admin/topics_create.html", {"request": request, "users": users})
+    categories = await category_crud.get_categories_list(db)
+    subcategories = await subcategory_crud.get_subcategories_list(db)
+    return templates.TemplateResponse("admin/topics_create.html", {
+        "request": request, 
+        "users": users,
+        "categories": categories,
+        "subcategories": subcategories
+    })
 
 
 @router.post("/topics/create")
@@ -244,28 +251,42 @@ async def admin_topics_create(
     title: str = Form(...),
     description: str = Form(""),
     user_id: Optional[int] = Form(None),
+    category_id: Optional[int] = Form(None),
+    subcategory_id: Optional[int] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Создание темы"""
 
     try:
-        topic_data = TopicCreate(title=title, description=description, user_id=user_id if user_id else None)
+        topic_data = TopicCreate(
+            title=title, 
+            description=description, 
+            user_id=user_id if user_id else None,
+            category_id=category_id if category_id else None,
+            subcategory_id=subcategory_id if subcategory_id else None
+        )
 
         await topic_crud.create_topic(db, topic_data)
         return RedirectResponse(url="/admin/topics", status_code=303)
 
     except Exception as e:
         users = await user_crud.get_users_list(db, limit=100)
+        categories = await category_crud.get_categories_list(db)
+        subcategories = await subcategory_crud.get_subcategories_list(db)
         return templates.TemplateResponse(
             "admin/topics_create.html",
             {
                 "request": request,
                 "error": str(e),
                 "users": users,
+                "categories": categories,
+                "subcategories": subcategories,
                 "form_data": {
                     "title": title,
                     "description": description,
                     "user_id": user_id,
+                    "category_id": category_id,
+                    "subcategory_id": subcategory_id,
                 },
             },
         )
@@ -279,7 +300,15 @@ async def admin_topics_edit_form(request: Request, topic_id: int, db: AsyncSessi
         raise HTTPException(status_code=404, detail="Тема не найдена")
 
     users = await user_crud.get_users_list(db, limit=100)
-    return templates.TemplateResponse("admin/topics_edit.html", {"request": request, "topic": topic, "users": users})
+    categories = await category_crud.get_categories_list(db)
+    subcategories = await subcategory_crud.get_subcategories_list(db)
+    return templates.TemplateResponse("admin/topics_edit.html", {
+        "request": request, 
+        "topic": topic, 
+        "users": users,
+        "categories": categories,
+        "subcategories": subcategories
+    })
 
 
 @router.post("/topics/{topic_id}/edit")
@@ -289,12 +318,20 @@ async def admin_topics_edit(
     title: str = Form(...),
     description: str = Form(""),
     is_active: bool = Form(True),
+    category_id: Optional[int] = Form(None),
+    subcategory_id: Optional[int] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Редактирование темы"""
 
     try:
-        topic_data = TopicUpdate(title=title, description=description, is_active=is_active)
+        topic_data = TopicUpdate(
+            title=title, 
+            description=description, 
+            is_active=is_active,
+            category_id=category_id if category_id else None,
+            subcategory_id=subcategory_id if subcategory_id else None
+        )
 
         await topic_crud.update_topic(db, topic_id, topic_data)
         return RedirectResponse(url="/admin/topics", status_code=303)
@@ -302,12 +339,16 @@ async def admin_topics_edit(
     except Exception as e:
         topic = await topic_crud.get_topic_by_id(db, topic_id)
         users = await user_crud.get_users_list(db, limit=100)
+        categories = await category_crud.get_categories_list(db)
+        subcategories = await subcategory_crud.get_subcategories_list(db)
         return templates.TemplateResponse(
             "admin/topics_edit.html",
             {
                 "request": request,
                 "topic": topic,
                 "users": users,
+                "categories": categories,
+                "subcategories": subcategories,
                 "error": str(e),
             },
         )
@@ -423,7 +464,7 @@ async def generate_and_save_ai_message(topic_id: str, user_id: str):
             await db.commit()
 
         # Отправляем задачу воркеру Celery по id записи
-        process_task.delay(task_id_db)
+        celery_app.send_task("process_task", args=[task_id_db])
 
         logger.info(
             f"🚀 Задача поставлена в очередь: task_id={task_id_db}, topic_id={topic_id_int}, user_id={user_id_int}"
@@ -528,7 +569,191 @@ async def admin_tasks_retry(task_id: int, db: AsyncSession = Depends(get_db)):
     # ставим статус pending и отправляем
     task.status = "pending"
     await db.commit()
-    process_task.delay(task_id)
+    celery_app.send_task("process_task", args=[task_id])
     return RedirectResponse(url="/admin/tasks", status_code=303)
+
+
+# =============================================================================
+# CATEGORY MANAGEMENT
+# =============================================================================
+
+@router.get("/categories", response_class=HTMLResponse)
+async def admin_categories_list(request: Request, db: AsyncSession = Depends(get_db)):
+    """Список категорий"""
+    categories = await category_crud.get_categories_with_topic_count(db)
+    return templates.TemplateResponse("admin/categories_list.html", {"request": request, "categories": categories})
+
+
+@router.get("/categories/create", response_class=HTMLResponse)
+async def admin_categories_create_form(request: Request):
+    """Форма создания категории"""
+    return templates.TemplateResponse("admin/categories_create.html", {"request": request})
+
+
+@router.post("/categories/create")
+async def admin_categories_create(
+    request: Request,
+    name: str = Form(...),
+    description: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Создание категории"""
+    try:
+        await category_crud.create_category(db, name, description)
+        return RedirectResponse(url="/admin/categories", status_code=303)
+    except Exception as e:
+        return templates.TemplateResponse(
+            "admin/categories_create.html",
+            {
+                "request": request,
+                "error": str(e),
+                "form_data": {"name": name, "description": description},
+            },
+        )
+
+
+@router.get("/categories/{category_id}/edit", response_class=HTMLResponse)
+async def admin_categories_edit_form(request: Request, category_id: int, db: AsyncSession = Depends(get_db)):
+    """Форма редактирования категории"""
+    category = await category_crud.get_category_by_id(db, category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    return templates.TemplateResponse("admin/categories_create.html", {"request": request, "category": category})
+
+
+@router.post("/categories/{category_id}/edit")
+async def admin_categories_edit(
+    request: Request,
+    category_id: int,
+    name: str = Form(...),
+    description: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Редактирование категории"""
+    try:
+        await category_crud.update_category(db, category_id, name, description)
+        return RedirectResponse(url="/admin/categories", status_code=303)
+    except Exception as e:
+        category = await category_crud.get_category_by_id(db, category_id)
+        return templates.TemplateResponse(
+            "admin/categories_create.html",
+            {
+                "request": request,
+                "category": category,
+                "error": str(e),
+            },
+        )
+
+
+@router.post("/categories/{category_id}/delete")
+async def admin_categories_delete(category_id: int, db: AsyncSession = Depends(get_db)):
+    """Удаление категории"""
+    await category_crud.delete_category(db, category_id)
+    return RedirectResponse(url="/admin/categories", status_code=303)
+
+
+# =============================================================================
+# SUBCATEGORY MANAGEMENT
+# =============================================================================
+
+@router.get("/subcategories", response_class=HTMLResponse)
+async def admin_subcategories_list(request: Request, category_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+    """Список подкатегорий"""
+    subcategories = await subcategory_crud.get_subcategories_list(db, category_id)
+    all_categories = await category_crud.get_categories_list(db)
+    selected_category = None
+    if category_id:
+        selected_category = await category_crud.get_category_by_id(db, category_id)
+    
+    return templates.TemplateResponse("admin/subcategories_list.html", {
+        "request": request, 
+        "subcategories": subcategories,
+        "all_categories": all_categories,
+        "selected_category": selected_category
+    })
+
+
+@router.get("/subcategories/create", response_class=HTMLResponse)
+async def admin_subcategories_create_form(request: Request, category_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+    """Форма создания подкатегории"""
+    categories = await category_crud.get_categories_list(db)
+    return templates.TemplateResponse("admin/subcategories_create.html", {
+        "request": request, 
+        "categories": categories,
+        "selected_category_id": category_id
+    })
+
+
+@router.post("/subcategories/create")
+async def admin_subcategories_create(
+    request: Request,
+    name: str = Form(...),
+    category_id: int = Form(...),
+    description: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Создание подкатегории"""
+    try:
+        await subcategory_crud.create_subcategory(db, name, category_id, description)
+        return RedirectResponse(url="/admin/subcategories", status_code=303)
+    except Exception as e:
+        categories = await category_crud.get_categories_list(db)
+        return templates.TemplateResponse(
+            "admin/subcategories_create.html",
+            {
+                "request": request,
+                "categories": categories,
+                "error": str(e),
+                "form_data": {"name": name, "category_id": category_id, "description": description},
+            },
+        )
+
+
+@router.get("/subcategories/{subcategory_id}/edit", response_class=HTMLResponse)
+async def admin_subcategories_edit_form(request: Request, subcategory_id: int, db: AsyncSession = Depends(get_db)):
+    """Форма редактирования подкатегории"""
+    subcategory = await subcategory_crud.get_subcategory_by_id(db, subcategory_id)
+    if not subcategory:
+        raise HTTPException(status_code=404, detail="Подкатегория не найдена")
+    categories = await category_crud.get_categories_list(db)
+    return templates.TemplateResponse("admin/subcategories_create.html", {
+        "request": request, 
+        "subcategory": subcategory,
+        "categories": categories
+    })
+
+
+@router.post("/subcategories/{subcategory_id}/edit")
+async def admin_subcategories_edit(
+    request: Request,
+    subcategory_id: int,
+    name: str = Form(...),
+    category_id: int = Form(...),
+    description: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Редактирование подкатегории"""
+    try:
+        await subcategory_crud.update_subcategory(db, subcategory_id, name, category_id, description)
+        return RedirectResponse(url="/admin/subcategories", status_code=303)
+    except Exception as e:
+        subcategory = await subcategory_crud.get_subcategory_by_id(db, subcategory_id)
+        categories = await category_crud.get_categories_list(db)
+        return templates.TemplateResponse(
+            "admin/subcategories_create.html",
+            {
+                "request": request,
+                "subcategory": subcategory,
+                "categories": categories,
+                "error": str(e),
+            },
+        )
+
+
+@router.post("/subcategories/{subcategory_id}/delete")
+async def admin_subcategories_delete(subcategory_id: int, db: AsyncSession = Depends(get_db)):
+    """Удаление подкатегории"""
+    await subcategory_crud.delete_subcategory(db, subcategory_id)
+    return RedirectResponse(url="/admin/subcategories", status_code=303)
 
 

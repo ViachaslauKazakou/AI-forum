@@ -4,7 +4,7 @@
 from fastapi.templating import Jinja2Templates
 from app.template_filters import (
     safe_html, nl2br, markdown_to_html, auto_link, 
-    truncate_words, highlight_search, format_file_size, smart_content
+    truncate_words, highlight_search, format_file_size, smart_content, regex_replace
 )
 
 # Создаем общий объект templates
@@ -19,3 +19,4 @@ templates.env.filters['truncate_words'] = truncate_words
 templates.env.filters['highlight_search'] = highlight_search
 templates.env.filters['format_file_size'] = format_file_size
 templates.env.filters['smart_content'] = smart_content
+templates.env.filters['regex_replace'] = regex_replace

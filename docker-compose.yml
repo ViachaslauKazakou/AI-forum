@@ -7,10 +7,8 @@ services:
     container_name: forum_app
     ports:
       - "8000:8000"    # Main Forum Application
-    environment:
-      # Используем host.docker.internal для доступа к localhost хост-машины
-      - DATABASE_URL=postgresql+asyncpg://docker:postgres@host.docker.internal:5433/postgres
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672//
+    env_file:
+      - .env
     volumes:
       - ./app:/app/app
       # - ./logs:/app/logs
@@ -53,10 +51,9 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: celery_worker
-    command: poetry run celery -A app.celery_tasks:celery_app worker -l info
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://docker:postgres@host.docker.internal:5433/postgres
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672//
+    command: python -m celery -A app.ai_manager.forum_manager worker -l info
+    env_file:
+      - .env
     volumes:
       - ./app:/app/app
     networks:

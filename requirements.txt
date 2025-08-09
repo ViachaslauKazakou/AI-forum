@@ -1,1 +1,2 @@
-shared-models @ git+https://github.com/ViachaslauKazakou/shared-models.git@v1.0.2
+# Shared models from git repository
+git+https://github.com/ViachaslauKazakou/shared-models.git@v1.0.2
