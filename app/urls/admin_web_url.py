@@ -8,7 +8,6 @@ from app.managers.db_manager import user_crud, topic_crud, message_crud, categor
 # from app.models.pydantic_models import UserRole, Status
 from app.models.pydantic_models import UserBaseModel
 from shared_models.schemas import UserRole, Status
-from app.ai_manager.forum_manager import ForumManager
 from shared_models.schemas import MessageCreate, TopicCreate, TopicUpdate, MessageUpdate
 import json
 from app.database import async_session_maker
@@ -595,11 +594,18 @@ async def admin_categories_create(
     request: Request,
     name: str = Form(...),
     description: str = Form(""),
+    slug: str = Form(""),
+    color: str = Form(""),
+    icon: str = Form(""),
+    is_active: bool = Form(True),
+    sort_order: int = Form(0),
     db: AsyncSession = Depends(get_db),
 ):
     """Создание категории"""
     try:
-        await category_crud.create_category(db, name, description)
+        await category_crud.create_category(
+            db, name, description, slug, color, icon, is_active, sort_order
+        )
         return RedirectResponse(url="/admin/categories", status_code=303)
     except Exception as e:
         return templates.TemplateResponse(
@@ -607,7 +613,15 @@ async def admin_categories_create(
             {
                 "request": request,
                 "error": str(e),
-                "form_data": {"name": name, "description": description},
+                "form_data": {
+                    "name": name, 
+                    "description": description,
+                    "slug": slug,
+                    "color": color,
+                    "icon": icon,
+                    "is_active": is_active,
+                    "sort_order": sort_order
+                },
             },
         )
 
@@ -627,11 +641,18 @@ async def admin_categories_edit(
     category_id: int,
     name: str = Form(...),
     description: str = Form(""),
+    slug: str = Form(""),
+    color: str = Form(""),
+    icon: str = Form(""),
+    is_active: bool = Form(True),
+    sort_order: int = Form(0),
     db: AsyncSession = Depends(get_db),
 ):
     """Редактирование категории"""
     try:
-        await category_crud.update_category(db, category_id, name, description)
+        await category_crud.update_category(
+            db, category_id, name, description, slug, color, icon, is_active, sort_order
+        )
         return RedirectResponse(url="/admin/categories", status_code=303)
     except Exception as e:
         category = await category_crud.get_category_by_id(db, category_id)
@@ -690,11 +711,18 @@ async def admin_subcategories_create(
     name: str = Form(...),
     category_id: int = Form(...),
     description: str = Form(""),
+    slug: str = Form(""),
+    color: str = Form(""),
+    icon: str = Form(""),
+    is_active: bool = Form(True),
+    sort_order: int = Form(0),
     db: AsyncSession = Depends(get_db),
 ):
     """Создание подкатегории"""
     try:
-        await subcategory_crud.create_subcategory(db, name, category_id, description)
+        await subcategory_crud.create_subcategory(
+            db, name, category_id, description, slug, color, icon, is_active, sort_order
+        )
         return RedirectResponse(url="/admin/subcategories", status_code=303)
     except Exception as e:
         categories = await category_crud.get_categories_list(db)
@@ -704,7 +732,16 @@ async def admin_subcategories_create(
                 "request": request,
                 "categories": categories,
                 "error": str(e),
-                "form_data": {"name": name, "category_id": category_id, "description": description},
+                "form_data": {
+                    "name": name, 
+                    "category_id": category_id, 
+                    "description": description,
+                    "slug": slug,
+                    "color": color,
+                    "icon": icon,
+                    "is_active": is_active,
+                    "sort_order": sort_order
+                },
             },
         )
 
@@ -730,11 +767,18 @@ async def admin_subcategories_edit(
     name: str = Form(...),
     category_id: int = Form(...),
     description: str = Form(""),
+    slug: str = Form(""),
+    color: str = Form(""),
+    icon: str = Form(""),
+    is_active: bool = Form(True),
+    sort_order: int = Form(0),
     db: AsyncSession = Depends(get_db),
 ):
     """Редактирование подкатегории"""
     try:
-        await subcategory_crud.update_subcategory(db, subcategory_id, name, category_id, description)
+        await subcategory_crud.update_subcategory(
+            db, subcategory_id, name, category_id, description, slug, color, icon, is_active, sort_order
+        )
         return RedirectResponse(url="/admin/subcategories", status_code=303)
     except Exception as e:
         subcategory = await subcategory_crud.get_subcategory_by_id(db, subcategory_id)

@@ -49,8 +49,8 @@
                 </div>
             {% endif %}
         </div>
-
-        <!-- Форма добавления сообщения -->
+        <!-- Если пользователь авторизован, показываем форму для добавления сообщения -->
+        {% if current_user.is_authenticated %}
         <div class="card mt-4">
             <div class="card-header">
                 <h5 id="message-form-title">Добавить сообщение</h5>
@@ -80,6 +80,11 @@
             </div>
         </div>
     </div>
+        {% else %}
+        <div class="alert alert-warning mt-4">
+            <p>Чтобы добавить сообщение, <a href="{{url}}/{{lang}}/login">войдите в систему</a> или <a href="{{url}}/{{lang}}/register">зарегистрируйтесь</a>.</p>
+        </div>
+        {% endif %}
     
     <div class="col-md-4">
         <div class="card">

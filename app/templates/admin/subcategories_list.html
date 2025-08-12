@@ -51,12 +51,17 @@
                     {% if subcategories %}
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped">
-                            <thead>
+                            <thead class="table-dark">
                                 <tr>
                                     <th>ID</th>
                                     <th>Название</th>
+                                    <th>Слаг</th>
                                     <th>Категория</th>
+                                    <th>Цвет</th>
+                                    <th>Иконка</th>
                                     <th>Описание</th>
+                                    <th>Статус</th>
+                                    <th>Порядок</th>
                                     <th>Действия</th>
                                 </tr>
                             </thead>
@@ -64,18 +69,76 @@
                                 {% for subcategory in subcategories %}
                                 <tr>
                                     <td>{{ subcategory.id }}</td>
-                                    <td>{{ subcategory.name }}</td>
-                                    <td>{{ subcategory.category.name if subcategory.category else "-" }}</td>
-                                    <td>{{ subcategory.description or "-" }}</td>
                                     <td>
-                                        <a href="/admin/subcategories/{{ subcategory.id }}/edit" class="btn btn-sm btn-warning">
-                                            <i class="fas fa-edit"></i> Редактировать
-                                        </a>
-                                        <form method="post" action="/admin/subcategories/{{ subcategory.id }}/delete" style="display: inline;">
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены, что хотите удалить эту подкатегорию?')">
-                                                <i class="fas fa-trash"></i> Удалить
-                                            </button>
-                                        </form>
+                                        <div class="d-flex align-items-center">
+                                            {% if subcategory.icon %}
+                                                <i class="bi bi-{{ subcategory.icon }} me-2" 
+                                                   {% if subcategory.color %}style="color: {{ subcategory.color }};"{% endif %}></i>
+                                            {% endif %}
+                                            <span>{{ subcategory.name }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <code>{{ subcategory.slug }}</code>
+                                    </td>
+                                    <td>
+                                        {% if subcategory.category %}
+                                            <div class="d-flex align-items-center">
+                                                {% if subcategory.category.icon %}
+                                                    <i class="bi bi-{{ subcategory.category.icon }} me-1" 
+                                                       {% if subcategory.category.color %}style="color: {{ subcategory.category.color }};"{% endif %}></i>
+                                                {% endif %}
+                                                <span>{{ subcategory.category.name }}</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if subcategory.color %}
+                                            <div class="d-flex align-items-center">
+                                                <div class="color-preview me-2" 
+                                                     style="width: 18px; height: 18px; background-color: {{ subcategory.color }}; border: 1px solid #ccc; border-radius: 3px;"></div>
+                                                <small>{{ subcategory.color }}</small>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if subcategory.icon %}
+                                            <i class="bi bi-{{ subcategory.icon }}"></i> {{ subcategory.icon }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if subcategory.description %}
+                                            {{ subcategory.description[:40] }}{% if subcategory.description|length > 40 %}...{% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if subcategory.is_active %}
+                                            <span class="badge bg-success">Активна</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Неактивна</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ subcategory.sort_order }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="/admin/subcategories/{{ subcategory.id }}/edit" class="btn btn-sm btn-warning">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <form method="post" action="/admin/subcategories/{{ subcategory.id }}/delete" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-danger" 
+                                                        onclick="return confirm('Вы уверены, что хотите удалить эту подкатегорию?')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}

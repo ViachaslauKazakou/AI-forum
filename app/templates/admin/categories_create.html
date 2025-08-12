@@ -17,25 +17,99 @@
                     </h3>
                 </div>
                 <div class="card-body">
+                    {% if error %}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> {{ error }}
+                    </div>
+                    {% endif %}
+                    
                     <form method="post">
-                        <div class="form-group">
-                            <label for="name">Название категории *</label>
-                            <input type="text" class="form-control" id="name" name="name" 
-                                   value="{{ category.name if category else '' }}" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="description">Описание</label>
-                            <textarea class="form-control" id="description" name="description" rows="3">{{ category.description if category else '' }}</textarea>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="name" class="form-label">Название категории *</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="{{ category.name if category else (form_data.name if form_data else '') }}" 
+                                           required maxlength="100">
+                                    <small class="form-text text-muted">Максимум 100 символов</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="slug" class="form-label">Слаг (URL)</label>
+                                    <input type="text" class="form-control" id="slug" name="slug" 
+                                           value="{{ category.slug if category else (form_data.slug if form_data else '') }}" 
+                                           maxlength="100" pattern="[a-zA-Z0-9а-яё\-_]+">
+                                    <small class="form-text text-muted">Автоматически генерируется из названия, если не указан. Только буквы, цифры, дефисы и подчеркивания</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="description" class="form-label">Описание</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3" 
+                                              maxlength="1000">{{ category.description if category else (form_data.description if form_data else '') }}</textarea>
+                                    <small class="form-text text-muted">Максимум 1000 символов</small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="color" class="form-label">Цвет категории</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="color" name="color" 
+                                               value="{{ category.color if category and category.color else (form_data.color if form_data and form_data.color else '#007bff') }}"
+                                               title="Выберите цвет категории">
+                                        <input type="text" class="form-control" id="color_text" 
+                                               value="{{ category.color if category and category.color else (form_data.color if form_data and form_data.color else '#007bff') }}"
+                                               pattern="^#[0-9A-Fa-f]{6}$" maxlength="7" placeholder="#007bff">
+                                    </div>
+                                    <small class="form-text text-muted">Цвет для отображения категории в интерфейсе</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="icon" class="form-label">Иконка (Bootstrap Icons)</label>
+                                    <input type="text" class="form-control" id="icon" name="icon" 
+                                           value="{{ category.icon if category else (form_data.icon if form_data else '') }}" 
+                                           maxlength="50" placeholder="folder">
+                                    <small class="form-text text-muted">
+                                        Название иконки из Bootstrap Icons (без префикса bi-). 
+                                        <a href="https://icons.getbootstrap.com/" target="_blank">Посмотреть иконки</a>
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="sort_order" class="form-label">Порядок сортировки</label>
+                                    <input type="number" class="form-control" id="sort_order" name="sort_order" 
+                                           value="{{ category.sort_order if category else (form_data.sort_order if form_data else 0) }}" 
+                                           min="0" step="1">
+                                    <small class="form-text text-muted">Чем меньше число, тем выше в списке</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                               value="true" 
+                                               {% if category %}
+                                                   {% if category.is_active %}checked{% endif %}
+                                               {% elif form_data %}
+                                                   {% if form_data.is_active %}checked{% endif %}
+                                               {% else %}
+                                                   checked
+                                               {% endif %}>
+                                        <label class="form-check-label" for="is_active">
+                                            Активная категория
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">Неактивные категории скрыты от пользователей</small>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="form-group">
                             <button type="submit" class="btn btn-success">
-                                <i class="fas fa-save"></i> 
+                                <i class="bi bi-check-circle"></i> 
                                 {% if category %}Сохранить изменения{% else %}Создать категорию{% endif %}
                             </button>
                             <a href="/admin/categories" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Назад к списку
+                                <i class="bi bi-arrow-left"></i> Назад к списку
                             </a>
                         </div>
                     </form>
@@ -44,4 +118,43 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const colorPicker = document.getElementById('color');
+    const colorText = document.getElementById('color_text');
+    const nameInput = document.getElementById('name');
+    const slugInput = document.getElementById('slug');
+    
+    // Синхронизация color picker и text input
+    colorPicker.addEventListener('input', function() {
+        colorText.value = this.value;
+    });
+    
+    colorText.addEventListener('input', function() {
+        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+            colorPicker.value = this.value;
+        }
+    });
+    
+    // Автогенерация slug из названия
+    nameInput.addEventListener('input', function() {
+        if (!slugInput.value || slugInput.dataset.auto === 'true') {
+            const slug = this.value
+                .toLowerCase()
+                .replace(/[^a-zA-Z0-9а-яё\s\-_]/g, '')
+                .replace(/[\s]+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            slugInput.value = slug;
+            slugInput.dataset.auto = 'true';
+        }
+    });
+    
+    // Если пользователь редактирует slug вручную, отключаем автогенерацию
+    slugInput.addEventListener('input', function() {
+        slugInput.dataset.auto = 'false';
+    });
+});
+</script>
 {% endblock %}

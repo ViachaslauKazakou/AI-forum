@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     Управление жизненным циклом приложения
     """
     # Запуск
-    logger.info("Starting RAG Manager service...")
+    logger.info("Starting Forum service...")
 
     # try:
     #     # Инициализация БД (можно пропустить в dev режиме)

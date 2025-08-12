@@ -271,21 +271,68 @@ class CategoryApi:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def create_category(db: AsyncSession, name: str, description: str = "") -> Category:
+    async def create_category(
+        db: AsyncSession, 
+        name: str, 
+        description: str = "", 
+        slug: str = "",
+        color: str = "",
+        icon: str = "",
+        is_active: bool = True,
+        sort_order: int = 0
+    ) -> Category:
         """Создать новую категорию"""
-        db_category = Category(name=name, description=description)
+        # Генерируем slug из названия если не указан
+        if not slug:
+            import re
+            slug = re.sub(r'[^a-zA-Z0-9а-яё\-_]', '-', name.lower())
+            slug = re.sub(r'-+', '-', slug).strip('-')
+        
+        db_category = Category(
+            name=name, 
+            description=description,
+            slug=slug,
+            color=color if color else None,
+            icon=icon if icon else None,
+            is_active=is_active,
+            sort_order=sort_order
+        )
         db.add(db_category)
         await db.commit()
         await db.refresh(db_category)
         return db_category
 
     @staticmethod
-    async def update_category(db: AsyncSession, category_id: int, name: str, description: str = "") -> Optional[Category]:
+    async def update_category(
+        db: AsyncSession, 
+        category_id: int, 
+        name: str, 
+        description: str = "",
+        slug: str = "",
+        color: str = "",
+        icon: str = "",
+        is_active: bool = True,
+        sort_order: int = 0
+    ) -> Optional[Category]:
         """Обновить категорию"""
+        # Генерируем slug из названия если не указан
+        if not slug:
+            import re
+            slug = re.sub(r'[^a-zA-Z0-9а-яё\-_]', '-', name.lower())
+            slug = re.sub(r'-+', '-', slug).strip('-')
+        
         result = await db.execute(
             update(Category)
             .where(Category.id == category_id)
-            .values(name=name, description=description)
+            .values(
+                name=name, 
+                description=description,
+                slug=slug,
+                color=color if color else None,
+                icon=icon if icon else None,
+                is_active=is_active,
+                sort_order=sort_order
+            )
             .returning(Category)
         )
         await db.commit()
@@ -337,21 +384,72 @@ class SubcategoryApi:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def create_subcategory(db: AsyncSession, name: str, category_id: int, description: str = "") -> Subcategory:
+    async def create_subcategory(
+        db: AsyncSession, 
+        name: str, 
+        category_id: int, 
+        description: str = "",
+        slug: str = "",
+        color: str = "",
+        icon: str = "",
+        is_active: bool = True,
+        sort_order: int = 0
+    ) -> Subcategory:
         """Создать новую подкатегорию"""
-        db_subcategory = Subcategory(name=name, category_id=category_id, description=description)
+        # Генерируем slug из названия если не указан
+        if not slug:
+            import re
+            slug = re.sub(r'[^a-zA-Z0-9а-яё\-_]', '-', name.lower())
+            slug = re.sub(r'-+', '-', slug).strip('-')
+        
+        db_subcategory = Subcategory(
+            name=name, 
+            category_id=category_id, 
+            description=description,
+            slug=slug,
+            color=color if color else None,
+            icon=icon if icon else None,
+            is_active=is_active,
+            sort_order=sort_order
+        )
         db.add(db_subcategory)
         await db.commit()
         await db.refresh(db_subcategory)
         return db_subcategory
 
     @staticmethod
-    async def update_subcategory(db: AsyncSession, subcategory_id: int, name: str, category_id: int, description: str = "") -> Optional[Subcategory]:
+    async def update_subcategory(
+        db: AsyncSession, 
+        subcategory_id: int, 
+        name: str, 
+        category_id: int, 
+        description: str = "",
+        slug: str = "",
+        color: str = "",
+        icon: str = "",
+        is_active: bool = True,
+        sort_order: int = 0
+    ) -> Optional[Subcategory]:
         """Обновить подкатегорию"""
+        # Генерируем slug из названия если не указан
+        if not slug:
+            import re
+            slug = re.sub(r'[^a-zA-Z0-9а-яё\-_]', '-', name.lower())
+            slug = re.sub(r'-+', '-', slug).strip('-')
+        
         result = await db.execute(
             update(Subcategory)
             .where(Subcategory.id == subcategory_id)
-            .values(name=name, category_id=category_id, description=description)
+            .values(
+                name=name, 
+                category_id=category_id, 
+                description=description,
+                slug=slug,
+                color=color if color else None,
+                icon=icon if icon else None,
+                is_active=is_active,
+                sort_order=sort_order
+            )
             .returning(Subcategory)
         )
         await db.commit()

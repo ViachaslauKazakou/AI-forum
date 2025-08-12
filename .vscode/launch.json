@@ -42,6 +42,66 @@
             "jinja": true
         },
         {
+            "name": "AI Forum: Local Development",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app/main.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "DATABASE_URL": "postgresql+asyncpg://docker:docker@localhost:5433/postgres",
+                "RABBITMQ_URL": "amqp://guest:guest@localhost:5672//",
+                "REDIS_URL": "redis://localhost:6379",
+                "LOG_LEVEL": "DEBUG",
+                "DEBUG": "true",
+                "DEVELOPMENT": "true"
+            },
+            "envFile": "${workspaceFolder}/.env.local",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false,
+            "subProcess": true,
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "jinja": true
+        },
+        {
+            "name": "AI Forum: Celery Worker Debug",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run_celery.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "DATABASE_URL": "postgresql+asyncpg://docker:docker@localhost:5433/postgres",
+                "RABBITMQ_URL": "amqp://guest:guest@localhost:5672//",
+                "REDIS_URL": "redis://localhost:6379",
+                "LOG_LEVEL": "DEBUG",
+                "DEBUG": "true",
+                "DEVELOPMENT": "true"
+            },
+            "envFile": "${workspaceFolder}/.env.local",
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false,
+            "subProcess": true,
+            "python": "${workspaceFolder}/.venv/bin/python"
+        },
+        {
+            "name": "AI Forum: Docker Debug",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}",
+                    "remoteRoot": "/app"
+                }
+            ],
+            "justMyCode": false
+        },
+        {
             "name": "Debug Current File",
             "type": "debugpy",
             "request": "launch",
